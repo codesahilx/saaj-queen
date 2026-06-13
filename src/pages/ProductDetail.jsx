@@ -109,10 +109,10 @@ export default function ProductDetail() {
 
       <div className="section" style={{ paddingTop: 40 }}>
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'start' }}>
+          <div className="product-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'start' }}>
 
             {/* Images */}
-            <div style={{ position: 'sticky', top: 90 }}>
+            <div className="product-detail-images" style={{ position: 'sticky', top: 90 }}>
               <div style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 12, border: '1px solid var(--c-border)', aspectRatio: '4/5', background: '#F7F3EE' }}>
                 <AnimatePresence mode="wait">
                   <motion.img
@@ -128,7 +128,7 @@ export default function ProductDetail() {
                 </AnimatePresence>
               </div>
               {product.images.length > 1 && (
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
                   {product.images.map((img, i) => (
                     <button
                       key={i}
@@ -322,7 +322,7 @@ export default function ProductDetail() {
               <h2 className="section-title">Related Products</h2>
               <div className="title-bar center" />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
+            <div className="prod-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
               {related.map(p => <ProductCard key={p.id} product={p} />)}
             </div>
           </div>
@@ -331,11 +331,20 @@ export default function ProductDetail() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 900px) {
-          .product-detail-grid { grid-template-columns: 1fr !important; }
+        @media (max-width: 860px) {
+          .product-detail-grid {
+            grid-template-columns: 1fr !important;
+            gap: 28px !important;
+          }
+          .product-detail-images {
+            position: static !important;
+          }
+          .product-detail-grid .related-grid {
+            grid-template-columns: repeat(2,1fr) !important;
+          }
         }
-        @media (max-width: 768px) {
-          [style*="repeat(4,1fr)"] { grid-template-columns: repeat(2,1fr) !important; }
+        @media (max-width: 640px) {
+          .product-detail-grid { gap: 20px !important; }
         }
       `}</style>
     </>
