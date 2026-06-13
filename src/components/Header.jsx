@@ -130,12 +130,16 @@ export default function Header() {
           </button>
 
           {/* Logo */}
-          <Link to="/" style={{ flexShrink: 0 }}>
+          <Link to="/" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
             <img
               src="/logo.jpeg"
               alt="Saaj Queen"
-              style={{ height: 56, width: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--c-gold)' }}
+              style={{ height: 72, width: 72, borderRadius: '50%', objectFit: 'cover', border: '2.5px solid var(--c-gold)' }}
             />
+            <div style={{ lineHeight: 1.15 }}>
+              <p style={{ fontFamily: 'var(--font-h)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--c-dark)', letterSpacing: '.02em' }}>Saaj Queen</p>
+              <p style={{ fontSize: '.62rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--c-gold)', marginTop: 1 }}>Royal Jewellery</p>
+            </div>
           </Link>
 
           {/* Desktop Nav */}
