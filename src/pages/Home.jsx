@@ -1,12 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Pagination } from 'swiper/modules';
-import 'swiper/css';
-import 'swiper/css/pagination';
-import { FiArrowRight, FiTruck, FiRefreshCw, FiShield, FiHeadphones, FiStar, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { categories, heroSlides, testimonials } from '../data/products';
+import { FiArrowRight, FiTruck, FiRefreshCw, FiShield, FiHeadphones, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { categories, heroSlides } from '../data/products';
 import { useProducts } from '../hooks/useProducts';
 import ProductCard from '../components/ProductCard';
 
@@ -500,7 +496,7 @@ export default function Home() {
                 boxShadow: '0 16px 48px rgba(59,7,100,.4)',
               }}>
                 <div style={{ display: 'flex', gap: 24 }}>
-                  {[{ n: '50K+', l: 'Happy Queens' }, { n: '600+', l: 'Designs' }, { n: '5★', l: 'Rating' }].map(({ n, l }) => (
+                  {[{ n: '50K+', l: 'Happy Queens' }, { n: '600+', l: 'Designs' }, { n: 'COD', l: 'Available' }].map(({ n, l }) => (
                     <div key={l} style={{ textAlign: 'center' }}>
                       <p style={{ fontFamily: 'var(--font-h)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--c-gold2)' }}>{n}</p>
                       <p style={{ fontSize: '.72rem', opacity: .75, marginTop: 2 }}>{l}</p>
@@ -527,69 +523,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ── Testimonials ── */}
-      <section className="section" style={{ background: 'var(--c-bg2)' }}>
-        <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <span className="section-eyebrow">Reviews</span>
-            <h2 className="section-title">What Our Queens Say</h2>
-            <div className="title-bar center" />
-          </div>
-          <Swiper
-            modules={[Autoplay, Pagination]}
-            slidesPerView={1}
-            spaceBetween={24}
-            autoplay={{ delay: 4000, disableOnInteraction: false }}
-            pagination={{ clickable: true }}
-            breakpoints={{
-              640:  { slidesPerView: 2 },
-              1024: { slidesPerView: 3 },
-            }}
-            style={{ paddingBottom: 48 }}
-          >
-            {testimonials.map(t => (
-              <SwiperSlide key={t.id}>
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  style={{
-                    background: '#fff', borderRadius: 16,
-                    padding: '28px 24px',
-                    border: '1px solid var(--c-border)',
-                    height: '100%',
-                  }}
-                >
-                  {/* Stars */}
-                  <div style={{ display: 'flex', gap: 3, marginBottom: 16 }}>
-                    {[...Array(t.rating)].map((_, i) => (
-                      <FiStar key={i} size={14} style={{ color: 'var(--c-gold)', fill: 'var(--c-gold)' }} />
-                    ))}
-                  </div>
-                  <p style={{ fontSize: '.92rem', lineHeight: 1.75, color: 'var(--c-gray)', fontStyle: 'italic', marginBottom: 20 }}>
-                    "{t.text}"
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                      width: 44, height: 44, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, var(--c-purple), var(--c-purple2))',
-                      color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 700, fontSize: '1rem', flexShrink: 0,
-                    }}>
-                      {t.avatar}
-                    </div>
-                    <div>
-                      <p style={{ fontWeight: 600, fontSize: '.9rem' }}>{t.name}</p>
-                      <p style={{ fontSize: '.76rem', color: 'var(--c-gray)' }}>{t.city}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
         </div>
       </section>
 

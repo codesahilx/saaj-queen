@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiHeart, FiShoppingBag, FiStar, FiTruck, FiRefreshCw, FiShield, FiShare2, FiMessageCircle, FiChevronDown } from 'react-icons/fi';
+import { FiHeart, FiShoppingBag, FiTruck, FiRefreshCw, FiShield, FiShare2, FiMessageCircle, FiChevronDown } from 'react-icons/fi';
 import { FaHeart, FaWhatsapp } from 'react-icons/fa';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -166,16 +166,6 @@ export default function ProductDetail() {
                 {product.name}
               </h1>
 
-              {/* Rating */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                <div style={{ display: 'flex', gap: 2 }}>
-                  {[...Array(5)].map((_, i) => (
-                    <FiStar key={i} size={15} style={{ color: i < Math.floor(product.rating) ? 'var(--c-gold)' : 'var(--c-gray2)', fill: i < Math.floor(product.rating) ? 'var(--c-gold)' : 'none' }} />
-                  ))}
-                </div>
-                <span style={{ fontSize: '.85rem', fontWeight: 600 }}>{product.rating}</span>
-                <span style={{ fontSize: '.82rem', color: 'var(--c-gray)' }}>({product.reviews} reviews)</span>
-              </div>
 
               {/* Price */}
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>

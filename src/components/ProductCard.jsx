@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiHeart, FiShoppingBag, FiStar } from 'react-icons/fi';
+import { FiHeart, FiShoppingBag } from 'react-icons/fi';
 import { FaHeart } from 'react-icons/fa';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -132,21 +132,6 @@ export default function ProductCard({ product }) {
           <h3 style={{ fontSize: '.92rem', fontWeight: 500, lineHeight: 1.3, marginBottom: 8, color: 'var(--c-dark)' }}>
             {product.name}
           </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
-            <div style={{ display: 'flex', gap: 2 }}>
-              {[...Array(5)].map((_, i) => (
-                <FiStar
-                  key={i}
-                  size={11}
-                  style={{
-                    color: i < Math.floor(product.rating) ? 'var(--c-gold)' : 'var(--c-gray2)',
-                    fill: i < Math.floor(product.rating) ? 'var(--c-gold)' : 'none',
-                  }}
-                />
-              ))}
-            </div>
-            <span style={{ fontSize: '.72rem', color: 'var(--c-gray)' }}>({product.reviews})</span>
-          </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--c-dark)' }}>
               {fmt(product.price)}
