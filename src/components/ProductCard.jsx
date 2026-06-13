@@ -14,8 +14,9 @@ const badgeConfig = {
 };
 
 export default function ProductCard({ product }) {
-  const [hovered, setHovered] = useState(false);
-  const [imgIdx,  setImgIdx]  = useState(0);
+  const [hovered,  setHovered]  = useState(false);
+  const [imgIdx,   setImgIdx]   = useState(0);
+  const [imgError, setImgError] = useState(false);
   const { addToCart } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const { addToast } = useToast();
@@ -53,16 +54,23 @@ export default function ProductCard({ product }) {
       >
         {/* Image */}
         <div style={{ position: 'relative', overflow: 'hidden', aspectRatio: '3/4', background: '#F7F3EE' }}>
-          <img
-            src={product.images[imgIdx]}
-            alt={product.name}
-            style={{
-              width: '100%', height: '100%', objectFit: 'cover',
-              transition: 'transform .5s cubic-bezier(.4,0,.2,1)',
-              transform: hovered ? 'scale(1.06)' : 'scale(1)',
-            }}
-            loading="lazy"
-          />
+          {imgError || !product.images?.[imgIdx] ? (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--c-purple-lt)', color: 'var(--c-purple)', fontSize: '3rem' }}>
+              🛍️
+            </div>
+          ) : (
+            <img
+              src={product.images[imgIdx]}
+              alt={product.name}
+              style={{
+                width: '100%', height: '100%', objectFit: 'cover',
+                transition: 'transform .5s cubic-bezier(.4,0,.2,1)',
+                transform: hovered ? 'scale(1.06)' : 'scale(1)',
+              }}
+              loading="lazy"
+              onError={() => setImgError(true)}
+            />
+          )}
 
           {/* Badges */}
           {badge && (

@@ -7,9 +7,9 @@ export const categories = [
   { id: 'ring',     label: 'Finger Rings',     img: U('1605100804763-247f67b3557e') },
   { id: 'anklet',   label: 'Anklets',          img: U('1515562141207-7a88fb7ce338') },
   { id: 'watch',    label: 'Vintage Watches',  img: '/watch1.jpeg' },
-  { id: 'bracelet', label: 'Bracelets',        img: U('1573408301185-9519f94f3e76') },
+  { id: 'bracelet', label: 'Bracelets',        img: U('1611591437268-0bee50c4e9e8') },
   { id: 'bag',      label: 'Bags',             img: U('1584917865442-de89df76afd3') },
-  { id: 'giftbox',  label: 'Gift Boxes',       img: U('1549465469-3e47b96f9de1') },
+  { id: 'giftbox',  label: 'Gift Boxes',       img: U('1512909006721-3d9a0de69a27') },
 ];
 
 export const products = [
