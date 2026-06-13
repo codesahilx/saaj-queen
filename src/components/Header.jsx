@@ -260,7 +260,7 @@ export default function Header() {
             <Link
               to="/wishlist"
               style={{ position: 'relative', padding: 10, borderRadius: '50%', color: 'var(--c-dark)', display: 'flex', transition: 'var(--transition)' }}
-              className="icon-btn"
+              className="icon-btn header-wishlist"
               aria-label="Wishlist"
             >
               <FiHeart size={19} />
@@ -312,7 +312,7 @@ export default function Header() {
                   <span style={{ fontSize: '.82rem', fontWeight: 500, color: 'var(--c-dark)', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {user.displayName?.split(' ')[0] || 'Account'}
                   </span>
-                  <FiChevronDown size={13} style={{ color: 'var(--c-gray)', transition: '.2s', transform: userMenuOpen ? 'rotate(180deg)' : '' }} />
+                  <FiChevronDown size={13} className="user-chevron" style={{ color: 'var(--c-gray)', transition: '.2s', transform: userMenuOpen ? 'rotate(180deg)' : '' }} />
                 </button>
 
                 <AnimatePresence>

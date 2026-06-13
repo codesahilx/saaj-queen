@@ -344,9 +344,11 @@ input, select, textarea { font-family: inherit; }
   /* header compact */
   .logo-text        { display: none !important; }
   .header-logo-img  { height: 50px !important; width: 50px !important; }
+  .header-wishlist  { display: none !important; }
   .user-toggle span { display: none !important; }
-  .user-toggle      { padding: 4px !important; gap: 4px !important; }
-  .icon-btn         { padding: 8px !important; }
+  .user-chevron     { display: none !important; }
+  .user-toggle      { padding: 5px !important; }
+  .icon-btn         { padding: 9px !important; }
 }
 
 /* small phone */
