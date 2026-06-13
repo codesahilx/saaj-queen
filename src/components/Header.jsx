@@ -545,6 +545,10 @@ export default function Header() {
           .desk-nav { display: none !important; }
           .mobile-toggle { display: flex !important; }
         }
+        @media (max-width: 480px) {
+          .user-toggle span { display: none !important; }
+          .user-toggle { padding: 4px !important; gap: 4px !important; }
+        }
       `}</style>
     </>
   );
