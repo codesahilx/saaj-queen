@@ -6,10 +6,12 @@ import { Autoplay, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import { FiArrowRight, FiTruck, FiRefreshCw, FiShield, FiHeadphones, FiStar, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { products, categories, heroSlides, testimonials } from '../data/products';
+import { categories, heroSlides, testimonials } from '../data/products';
+import { useProducts } from '../hooks/useProducts';
 import ProductCard from '../components/ProductCard';
 
 export default function Home() {
+  const { products } = useProducts();
   const navigate = useNavigate();
   const [slideIdx, setSlideIdx] = useState(0);
   const [direction, setDirection] = useState(1);
