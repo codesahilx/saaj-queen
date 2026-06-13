@@ -360,6 +360,7 @@ export default function Home() {
           src="/necklace5.jpeg"
           alt="Bridal Collection"
           className="bridal-banner-img"
+          loading="lazy"
         />
         <div style={{
           position: 'absolute', inset: 0,
@@ -445,6 +446,7 @@ export default function Home() {
               <img
                 src="/watch1.jpeg"
                 alt="Sale"
+                loading="lazy"
                 style={{ width: '100%', borderRadius: 20, boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}
               />
               <div className="sale-badge-circle" style={{
@@ -488,6 +490,7 @@ export default function Home() {
                 src="/necklace1.jpeg"
                 alt="About Saaj Queen"
                 className="about-img"
+                loading="lazy"
               />
               <div className="about-stats-box" style={{
                 position: 'absolute', bottom: -20, right: -20,
@@ -555,6 +558,7 @@ export default function Home() {
                 <img
                   src={src}
                   alt={`Saaj Queen ${i + 1}`}
+                  loading="lazy"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .4s' }}
                   className="insta-img"
                 />

@@ -47,6 +47,11 @@ export default function ProductDetail() {
       .finally(() => setFetching(false));
   }, [id]);
 
+  useEffect(() => {
+    if (product) document.title = `${product.name} | Saaj Queen`;
+    return () => { document.title = 'Saaj Queen – Royal Jewellery'; };
+  }, [product]);
+
   const { addToCart } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const { addToast } = useToast();
@@ -140,7 +145,7 @@ export default function ProductDetail() {
                         transition: 'var(--transition)',
                       }}
                     >
-                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={img} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </button>
                   ))}
                 </div>

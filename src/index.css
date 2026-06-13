@@ -186,30 +186,6 @@ input, select, textarea { font-family: inherit; }
 .empty-state h3 { font-family: var(--font-h); font-size: 1.4rem; margin-bottom: 8px; }
 .empty-state p  { color: var(--c-gray); font-size: .9rem; margin-bottom: 24px; }
 
-/* Swiper overrides */
-.swiper-pagination-bullet { background: rgba(255,255,255,.5) !important; opacity: 1 !important; }
-.swiper-pagination-bullet-active {
-  background: var(--c-gold) !important;
-  width: 24px !important;
-  border-radius: 4px !important;
-}
-.swiper-button-next::after, .swiper-button-prev::after {
-  font-size: .9rem !important;
-  font-weight: 900 !important;
-  color: #fff !important;
-}
-.swiper-button-next, .swiper-button-prev {
-  width: 44px !important; height: 44px !important;
-  border-radius: 50% !important;
-  background: rgba(255,255,255,.12) !important;
-  border: 1.5px solid rgba(255,255,255,.3) !important;
-  backdrop-filter: blur(6px) !important;
-}
-.swiper-button-next:hover, .swiper-button-prev:hover {
-  background: var(--c-gold) !important;
-  border-color: var(--c-gold) !important;
-}
-.swiper-button-next:hover::after, .swiper-button-prev:hover::after { color: #0D0D0D !important; }
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
