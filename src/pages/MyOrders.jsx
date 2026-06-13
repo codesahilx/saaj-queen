@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiPackage, FiChevronDown, FiChevronUp, FiMapPin, FiPhone, FiShoppingBag } from 'react-icons/fi';
@@ -29,11 +29,13 @@ export default function MyOrders() {
       try {
         const q = query(
           collection(db, 'orders'),
-          where('customer.uid', '==', user.uid),
-          orderBy('createdAt', 'desc')
+          where('customer.uid', '==', user.uid)
         );
         const snap = await getDocs(q);
-        setOrders(snap.docs.map(d => ({ _docId: d.id, ...d.data() })));
+        const sorted = snap.docs
+          .map(d => ({ _docId: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        setOrders(sorted);
       } catch (e) {
         console.error(e);
       } finally {

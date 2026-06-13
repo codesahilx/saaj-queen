@@ -187,10 +187,13 @@ export default function CartSidebar({ open, onClose }) {
               <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--c-purple)' }}>{fmt(total)}</span>
             </div>
 
-            <Link to="/checkout" onClick={onClose}>
-              <button className="btn btn-gold btn-full btn-lg" style={{ marginBottom: 10 }}>
-                Proceed to Checkout
-              </button>
+            <Link
+              to="/checkout"
+              onClick={onClose}
+              className="btn btn-gold btn-full btn-lg"
+              style={{ marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              Proceed to Checkout
             </Link>
             <button
               className="btn btn-outline btn-full"

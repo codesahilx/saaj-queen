@@ -291,7 +291,7 @@ export default function Checkout() {
                         <label className="form-label">State *</label>
                         <select name="state" value={form.state} onChange={update} className={`form-select ${errors.state ? 'error' : ''}`}>
                           <option value="">Select</option>
-                          {['Delhi','Maharashtra','Gujarat','Rajasthan','Uttar Pradesh','Madhya Pradesh','Karnataka','Tamil Nadu','West Bengal','Punjab','Haryana','Bihar','Jharkhand','Odisha','Kerala','Assam'].map(s => (
+                          {['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'].map(s => (
                             <option key={s} value={s}>{s}</option>
                           ))}
                         </select>
@@ -311,10 +311,8 @@ export default function Checkout() {
                   <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: .22 }}>
                     <h3 style={{ fontFamily: 'var(--font-h)', fontSize: '1.2rem', marginBottom: 24 }}>Payment Method</h3>
                     {[
-                      { val: 'cod',        label: 'Cash on Delivery',   sub: 'Pay when your order arrives',          icon: '💵' },
-                      { val: 'upi',        label: 'UPI Payment',         sub: 'Google Pay, PhonePe, Paytm etc.',      icon: '📱' },
-                      { val: 'card',       label: 'Credit / Debit Card', sub: 'Visa, Mastercard, RuPay accepted',     icon: '💳' },
-                      { val: 'netbanking', label: 'Net Banking',         sub: 'All major banks supported',            icon: '🏦' },
+                      { val: 'cod', label: 'Cash on Delivery', sub: 'Pay when your order arrives — no advance needed', icon: '💵' },
+                      { val: 'upi', label: 'UPI / GPay / PhonePe', sub: 'Pay via UPI — details shared on WhatsApp after order', icon: '📱' },
                     ].map(opt => (
                       <label key={opt.val} style={{
                         display: 'flex', alignItems: 'center', gap: 14,
