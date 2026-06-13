@@ -134,6 +134,7 @@ export default function Header() {
             <img
               src="/logo.jpeg"
               alt="Saaj Queen"
+              className="header-logo-img"
               style={{ height: 72, width: 72, borderRadius: '50%', objectFit: 'cover', border: '2.5px solid var(--c-gold)' }}
             />
             <div className="logo-text" style={{ lineHeight: 1.15 }}>
@@ -544,10 +545,6 @@ export default function Header() {
         @media (max-width: 860px) {
           .desk-nav { display: none !important; }
           .mobile-toggle { display: flex !important; }
-        }
-        @media (max-width: 480px) {
-          .user-toggle span { display: none !important; }
-          .user-toggle { padding: 4px !important; gap: 4px !important; }
         }
       `}</style>
     </>
