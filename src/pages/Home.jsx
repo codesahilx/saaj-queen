@@ -361,7 +361,7 @@ export default function Home() {
       {/* ── Full-Width Banner ── */}
       <section style={{ position: 'relative', overflow: 'hidden' }}>
         <img
-          src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=1920&q=80"
+          src="/necklace5.jpeg"
           alt="Bridal Collection"
           className="bridal-banner-img"
         />
@@ -447,7 +447,7 @@ export default function Home() {
             </div>
             <div style={{ position: 'relative' }}>
               <img
-                src="https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80"
+                src="/watch1.jpeg"
                 alt="Sale"
                 style={{ width: '100%', borderRadius: 20, boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}
               />
@@ -489,7 +489,7 @@ export default function Home() {
           <div className="about-grid">
             <div style={{ position: 'relative' }}>
               <img
-                src="https://images.unsplash.com/photo-1573408301185-9519f94f3e76?auto=format&fit=crop&w=700&q=80"
+                src="/necklace1.jpeg"
                 alt="About Saaj Queen"
                 className="about-img"
               />
@@ -604,15 +604,15 @@ export default function Home() {
           </div>
           <div className="insta-grid">
             {[
-              '1611652022419-a9419f74343d',
-              '1599643478518-a784e5dc4c8f',
-              '1535632066927-ab7c9ab60908',
-              '1605100804763-247f67b3557e',
-              '1573408301185-9519f94f3e76',
-              '1515562141207-7a88fb7ce338',
-            ].map((id, i) => (
+              '/necklace1.jpeg',
+              '/watch3.jpeg',
+              '/necklace2.jpeg',
+              '/watch5.jpeg',
+              '/necklace3.jpeg',
+              '/watch2.jpeg',
+            ].map((src, i) => (
               <a
-                key={id}
+                key={i}
                 href="https://instagram.com"
                 target="_blank"
                 rel="noreferrer"
@@ -620,8 +620,8 @@ export default function Home() {
                 className="insta-item"
               >
                 <img
-                  src={`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=300&q=80`}
-                  alt={`Instagram ${i + 1}`}
+                  src={src}
+                  alt={`Saaj Queen ${i + 1}`}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .4s' }}
                   className="insta-img"
                 />
