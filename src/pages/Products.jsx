@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiFilter, FiX, FiChevronDown, FiGrid, FiList, FiSliders } from 'react-icons/fi';
-import { products } from '../data/products';
+import { useProducts } from '../hooks/useProducts';
 import ProductCard from '../components/ProductCard';
 
 const CAT_OPTIONS = [
@@ -26,6 +26,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function Products() {
+  const { products, loading: productsLoading } = useProducts();
   const [searchParams] = useSearchParams();
   const [category, setCategory] = useState(searchParams.get('category') || 'all');
   const [sort,     setSort]     = useState('popular');
@@ -193,7 +194,13 @@ export default function Products() {
               </div>
 
               {/* Grid */}
-              {filtered.length === 0 ? (
+              {productsLoading ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} style={{ borderRadius: 14, background: 'var(--c-bg2)', aspectRatio: '3/4', animation: 'shimmer 1.2s infinite alternate' }} />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-icon">🔍</div>
                   <h3>No products found</h3>
@@ -227,6 +234,7 @@ export default function Products() {
 
       <style>{`
         .products-sidebar.open { border-radius: 0 !important; border: none !important; }
+        @keyframes shimmer { from { opacity:.5 } to { opacity:1 } }
       `}</style>
     </>
   );

@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiHeart, FiShoppingBag, FiStar, FiTruck, FiRefreshCw, FiShield, FiShare2, FiMessageCircle, FiChevronDown } from 'react-icons/fi';
 import { FaHeart, FaWhatsapp } from 'react-icons/fa';
-import { products } from '../data/products';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../firebase';
+import { products as staticProducts } from '../data/products';
 import ProductCard from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -12,15 +14,50 @@ import { useToast } from '../context/ToastContext';
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const product = products.find(p => p.id === +id);
 
+  const [product,  setProduct]  = useState(null);
+  const [related,  setRelated]  = useState([]);
+  const [fetching, setFetching] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
   const [qty,       setQty]       = useState(1);
   const [openFaq,   setOpenFaq]   = useState(null);
 
+  useEffect(() => {
+    setFetching(true);
+    setActiveImg(0);
+    getDoc(doc(db, 'products', id))
+      .then(snap => {
+        if (snap.exists()) {
+          const p = { id: snap.id, ...snap.data() };
+          setProduct(p);
+          getDocs(collection(db, 'products'))
+            .then(all => setRelated(all.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.category === p.category && x.id !== p.id).slice(0, 4)))
+            .catch(() => {});
+        } else {
+          const p = staticProducts.find(p => p.id === +id) || null;
+          setProduct(p);
+          if (p) setRelated(staticProducts.filter(x => x.category === p.category && x.id !== p.id).slice(0, 4));
+        }
+      })
+      .catch(() => {
+        const p = staticProducts.find(p => p.id === +id) || null;
+        setProduct(p);
+        if (p) setRelated(staticProducts.filter(x => x.category === p.category && x.id !== p.id).slice(0, 4));
+      })
+      .finally(() => setFetching(false));
+  }, [id]);
+
   const { addToCart } = useCart();
   const { toggleWishlist, isWishlisted } = useWishlist();
   const { addToast } = useToast();
+
+  if (fetching) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 44, height: 44, border: '3px solid var(--c-border)', borderTop: '3px solid var(--c-purple)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -35,7 +72,6 @@ export default function ProductDetail() {
   const wished   = isWishlisted(product.id);
   const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100);
   const fmt      = n => '₹' + n.toLocaleString('en-IN');
-  const related  = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
 
   const handleAddToCart = () => {
     for (let i = 0; i < qty; i++) addToCart(product);
@@ -294,6 +330,7 @@ export default function ProductDetail() {
       )}
 
       <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 900px) {
           .product-detail-grid { grid-template-columns: 1fr !important; }
         }

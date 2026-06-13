@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import {
+  collection, query, orderBy, onSnapshot, doc, updateDoc,
+  addDoc, deleteDoc, serverTimestamp, writeBatch,
+} from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPackage, FiTruck, FiCheck, FiX, FiClock, FiSearch, FiRefreshCw, FiChevronDown, FiChevronUp, FiPhone, FiMail, FiMapPin } from 'react-icons/fi';
+import {
+  FiPackage, FiTruck, FiCheck, FiX, FiClock, FiSearch, FiRefreshCw,
+  FiChevronDown, FiChevronUp, FiPhone, FiMail, FiMapPin,
+  FiPlus, FiEdit2, FiTrash2, FiShoppingBag, FiAlertCircle,
+} from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
-import { db, ADMIN_WHATSAPP } from '../firebase';
+import { db } from '../firebase';
+import { products as staticProducts } from '../data/products';
+import { useToast } from '../context/ToastContext';
 
 const STATUS_CONFIG = {
   pending:   { label: 'Pending',   color: '#F59E0B', bg: '#FEF3C7', icon: FiClock },
@@ -12,52 +21,86 @@ const STATUS_CONFIG = {
   delivered: { label: 'Delivered', color: '#16A34A', bg: '#DCFCE7', icon: FiCheck },
   cancelled: { label: 'Cancelled', color: '#EF4444', bg: '#FEE2E2', icon: FiX },
 };
-
 const ALL_STATUSES = Object.keys(STATUS_CONFIG);
 
-export default function Admin() {
-  const [orders,      setOrders]      = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [search,      setSearch]      = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [expanded,    setExpanded]    = useState(null);
-  const [updating,    setUpdating]    = useState(null);
+const CATEGORIES = ['necklace', 'earring', 'ring', 'anklet', 'watch', 'bracelet', 'bag', 'giftbox'];
+const CAT_LABELS = { necklace:'Necklace', earring:'Earring', ring:'Ring', anklet:'Anklet', watch:'Watch', bracelet:'Bracelet', bag:'Bag', giftbox:'Gift Box' };
+const BADGES = ['', 'new', 'bestseller', 'limited'];
 
+const EMPTY_FORM = {
+  name: '', category: 'necklace', price: '', mrp: '', badge: '',
+  desc: '', material: '', weight: '', care: '', stock: '', imageUrl: '',
+};
+
+export default function Admin() {
+  const { addToast } = useToast();
   const fmt = n => '₹' + (n || 0).toLocaleString('en-IN');
 
-  // Real-time listener
+  // ─── Tab ─────────────────────────────────────────────────────────────
+  const [adminTab, setAdminTab] = useState('orders');
+
+  // ─── Orders state ────────────────────────────────────────────────────
+  const [orders,       setOrders]       = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [search,       setSearch]       = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [expanded,     setExpanded]     = useState(null);
+  const [updating,     setUpdating]     = useState(null);
+
+  // ─── Products state ──────────────────────────────────────────────────
+  const [adminProducts,  setAdminProducts]  = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [seeded,         setSeeded]         = useState(false);
+  const [seeding,        setSeeding]        = useState(false);
+  const [showModal,      setShowModal]      = useState(false);
+  const [editingProd,    setEditingProd]    = useState(null);
+  const [form,           setForm]           = useState(EMPTY_FORM);
+  const [saving,         setSaving]         = useState(false);
+  const [deleteId,       setDeleteId]       = useState(null);
+  const [prodSearch,     setProdSearch]     = useState('');
+  const [prodCatFilter,  setProdCatFilter]  = useState('all');
+
+  // ─── Firestore listeners ─────────────────────────────────────────────
   useEffect(() => {
     const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, snap => {
+    return onSnapshot(q, snap => {
       setOrders(snap.docs.map(d => ({ _docId: d.id, ...d.data() })));
-      setLoading(false);
-    }, err => {
-      console.error('Firestore error:', err);
-      setLoading(false);
-    });
-    return unsub;
+      setOrdersLoading(false);
+    }, () => setOrdersLoading(false));
   }, []);
 
+  useEffect(() => {
+    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, snap => {
+      if (!snap.empty) {
+        setAdminProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setSeeded(true);
+      } else {
+        setAdminProducts(staticProducts);
+        setSeeded(false);
+      }
+      setProductsLoading(false);
+    }, () => {
+      setAdminProducts(staticProducts);
+      setProductsLoading(false);
+    });
+  }, []);
+
+  // ─── Orders helpers ──────────────────────────────────────────────────
   const updateStatus = async (docId, status) => {
     setUpdating(docId);
-    try {
-      await updateDoc(doc(db, 'orders', docId), { status });
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setUpdating(null);
-    }
+    try { await updateDoc(doc(db, 'orders', docId), { status }); }
+    catch (e) { console.error(e); }
+    finally { setUpdating(null); }
   };
 
-  const filtered = orders.filter(o => {
-    const matchSearch = !search || [o.orderId, o.customer?.name, o.customer?.phone, o.customer?.email]
+  const filteredOrders = orders.filter(o => {
+    const ms = !search || [o.orderId, o.customer?.name, o.customer?.phone, o.customer?.email]
       .join(' ').toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === 'all' || o.status === filterStatus;
-    return matchSearch && matchStatus;
+    return ms && (filterStatus === 'all' || o.status === filterStatus);
   });
 
-  // Stats
-  const stats = {
+  const orderStats = {
     total:     orders.length,
     pending:   orders.filter(o => o.status === 'pending').length,
     shipped:   orders.filter(o => o.status === 'shipped').length,
@@ -67,6 +110,116 @@ export default function Admin() {
 
   const waText = (o) =>
     `Hi ${o.customer?.name}! 👋\nYour Saaj Queen order *${o.orderId}* has been *${o.status}*.\nThank you for shopping with us! 🛍️`;
+
+  // ─── Products helpers ─────────────────────────────────────────────────
+  const filteredProds = adminProducts.filter(p => {
+    const ms = !prodSearch || p.name.toLowerCase().includes(prodSearch.toLowerCase());
+    const mc = prodCatFilter === 'all' || p.category === prodCatFilter;
+    return ms && mc;
+  });
+
+  const prodStats = {
+    total:    adminProducts.length,
+    inStock:  adminProducts.filter(p => (p.stock || 0) > 5).length,
+    lowStock: adminProducts.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= 5).length,
+    outStock: adminProducts.filter(p => (p.stock || 0) === 0).length,
+  };
+
+  const seedProducts = async () => {
+    if (!window.confirm(`Import ${staticProducts.length} products from file to Firestore?`)) return;
+    setSeeding(true);
+    try {
+      const batch = writeBatch(db);
+      staticProducts.forEach(p => {
+        const { id: pid, ...rest } = p;
+        batch.set(doc(db, 'products', String(pid)), { ...rest, createdAt: serverTimestamp() });
+      });
+      await batch.commit();
+      addToast('Products imported to Firestore!', 'success');
+    } catch (e) {
+      console.error(e);
+      addToast('Import failed. Check console.', 'error');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const openAdd = () => {
+    setEditingProd(null);
+    setForm(EMPTY_FORM);
+    setShowModal(true);
+  };
+
+  const openEdit = p => {
+    setEditingProd(p);
+    setForm({
+      name: p.name || '', category: p.category || 'necklace',
+      price: p.price || '', mrp: p.mrp || '', badge: p.badge || '',
+      desc: p.desc || '', material: p.material || '',
+      weight: p.weight || '', care: p.care || '',
+      stock: p.stock || '', imageUrl: p.images?.[0] || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name || !form.price || !form.mrp) {
+      addToast('Name, Price and MRP are required', 'error'); return;
+    }
+    setSaving(true);
+    try {
+      const data = {
+        name:     form.name.trim(),
+        category: form.category,
+        price:    Number(form.price),
+        mrp:      Number(form.mrp),
+        badge:    form.badge || null,
+        desc:     form.desc.trim(),
+        material: form.material.trim(),
+        weight:   form.weight.trim(),
+        care:     form.care.trim(),
+        stock:    Number(form.stock) || 0,
+        images:   [form.imageUrl.trim()].filter(Boolean),
+        rating:   editingProd?.rating || 4.5,
+        reviews:  editingProd?.reviews || 0,
+      };
+      if (editingProd) {
+        await updateDoc(doc(db, 'products', editingProd.id), data);
+        addToast('Product updated!', 'success');
+      } else {
+        await addDoc(collection(db, 'products'), { ...data, createdAt: serverTimestamp() });
+        addToast('Product added!', 'success');
+      }
+      setShowModal(false);
+    } catch (e) {
+      console.error(e);
+      addToast('Save failed. Try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await deleteDoc(doc(db, 'products', deleteId));
+      addToast('Product deleted', 'success');
+    } catch (e) {
+      addToast('Delete failed', 'error');
+    } finally {
+      setDeleteId(null);
+    }
+  };
+
+  const inp = (field, placeholder, type = 'text') => (
+    <input
+      type={type}
+      placeholder={placeholder}
+      value={form[field]}
+      onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+      style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--c-border)', borderRadius: 8, fontSize: '.88rem', outline: 'none', boxSizing: 'border-box' }}
+    />
+  );
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--c-bg2)' }}>
@@ -78,250 +231,498 @@ export default function Admin() {
             <img src="/logo.jpeg" alt="Saaj Queen" style={{ height: 44, width: 44, borderRadius: '50%', border: '2px solid var(--c-gold)' }} />
             <div>
               <h1 style={{ fontFamily: 'var(--font-h)', color: '#fff', fontSize: '1.5rem' }}>Admin Dashboard</h1>
-              <p style={{ color: 'rgba(255,255,255,.6)', fontSize: '.78rem' }}>Saaj Queen · Order Management</p>
+              <p style={{ color: 'rgba(255,255,255,.6)', fontSize: '.78rem' }}>Saaj Queen · Store Management</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,.7)', fontSize: '.82rem' }}>
-            <FiRefreshCw size={13} />
-            Live updates enabled
+            <FiRefreshCw size={13} /> Live updates enabled
           </div>
         </div>
       </div>
 
       <div className="container" style={{ padding: '32px 24px' }}>
 
-        {/* Stats Cards */}
-        <div className="stats-grid-admin">
+        {/* Tab Switcher */}
+        <div style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 14, padding: 5, marginBottom: 28, border: '1px solid var(--c-border)', width: 'fit-content' }}>
           {[
-            { label: 'Total Orders',  value: stats.total,     color: 'var(--c-purple)', icon: FiPackage },
-            { label: 'Pending',       value: stats.pending,   color: '#F59E0B',         icon: FiClock },
-            { label: 'Shipped',       value: stats.shipped,   color: '#8B5CF6',         icon: FiTruck },
-            { label: 'Delivered',     value: stats.delivered, color: '#16A34A',         icon: FiCheck },
-            { label: 'Total Revenue', value: fmt(stats.revenue), color: 'var(--c-gold)', icon: null, big: true },
-          ].map(({ label, value, color, icon: Icon, big }) => (
-            <div key={label} style={{ background: '#fff', borderRadius: 14, padding: '20px 18px', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <p style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-gray)' }}>{label}</p>
-                {Icon && <Icon size={16} style={{ color }} />}
-              </div>
-              <p style={{ fontFamily: big ? 'var(--font-h)' : 'var(--font-b)', fontSize: big ? '1.3rem' : '1.8rem', fontWeight: 700, color }}>{value}</p>
-            </div>
+            { id: 'orders',   label: 'Orders',   Icon: FiPackage },
+            { id: 'products', label: 'Products', Icon: FiShoppingBag },
+          ].map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setAdminTab(id)}
+              style={{
+                padding: '9px 22px', borderRadius: 10, fontSize: '.88rem', fontWeight: 600,
+                background: adminTab === id ? 'var(--c-purple)' : 'transparent',
+                color: adminTab === id ? '#fff' : 'var(--c-gray)',
+                display: 'flex', alignItems: 'center', gap: 7,
+                transition: '.2s', border: 'none', cursor: 'pointer',
+              }}
+            >
+              <Icon size={15} /> {label}
+            </button>
           ))}
         </div>
 
-        {/* Toolbar */}
-        <div style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '1px solid var(--c-border)', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Search */}
-          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <FiSearch size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--c-gray)' }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search by order ID, name, phone…"
-              style={{ width: '100%', paddingLeft: 36, paddingRight: 12, paddingTop: 9, paddingBottom: 9, border: '1.5px solid var(--c-border)', borderRadius: 8, fontSize: '.85rem', outline: 'none' }}
-            />
-          </div>
+        {/* ═══════════════ ORDERS TAB ═══════════════ */}
+        {adminTab === 'orders' && (
+          <>
+            {/* Order Stats */}
+            <div className="stats-grid-admin">
+              {[
+                { label: 'Total Orders',  value: orderStats.total,     color: 'var(--c-purple)', icon: FiPackage },
+                { label: 'Pending',       value: orderStats.pending,   color: '#F59E0B',         icon: FiClock },
+                { label: 'Shipped',       value: orderStats.shipped,   color: '#8B5CF6',         icon: FiTruck },
+                { label: 'Delivered',     value: orderStats.delivered, color: '#16A34A',         icon: FiCheck },
+                { label: 'Total Revenue', value: fmt(orderStats.revenue), color: 'var(--c-gold)', icon: null, big: true },
+              ].map(({ label, value, color, icon: Icon, big }) => (
+                <div key={label} style={{ background: '#fff', borderRadius: 14, padding: '20px 18px', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <p style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-gray)' }}>{label}</p>
+                    {Icon && <Icon size={16} style={{ color }} />}
+                  </div>
+                  <p style={{ fontFamily: big ? 'var(--font-h)' : 'var(--font-b)', fontSize: big ? '1.3rem' : '1.8rem', fontWeight: 700, color }}>{value}</p>
+                </div>
+              ))}
+            </div>
 
-          {/* Status Filter */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {['all', ...ALL_STATUSES].map(s => {
-              const cfg = s === 'all' ? null : STATUS_CONFIG[s];
-              const isActive = filterStatus === s;
-              return (
+            {/* Order Toolbar */}
+            <div style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '1px solid var(--c-border)', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+                <FiSearch size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--c-gray)' }} />
+                <input
+                  value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search by order ID, name, phone…"
+                  style={{ width: '100%', paddingLeft: 36, paddingRight: 12, paddingTop: 9, paddingBottom: 9, border: '1.5px solid var(--c-border)', borderRadius: 8, fontSize: '.85rem', outline: 'none' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {['all', ...ALL_STATUSES].map(s => {
+                  const cfg = s === 'all' ? null : STATUS_CONFIG[s];
+                  const isActive = filterStatus === s;
+                  return (
+                    <button key={s} onClick={() => setFilterStatus(s)} style={{
+                      padding: '7px 14px', borderRadius: 50, fontSize: '.78rem', fontWeight: 600,
+                      border: `1.5px solid ${isActive ? (cfg?.color || 'var(--c-purple)') : 'var(--c-border)'}`,
+                      background: isActive ? (cfg?.bg || 'var(--c-purple-lt)') : '#fff',
+                      color: isActive ? (cfg?.color || 'var(--c-purple)') : 'var(--c-gray)',
+                      cursor: 'pointer', transition: '.2s', textTransform: 'capitalize',
+                    }}>
+                      {s === 'all' ? `All (${orders.length})` : `${cfg.label} (${orders.filter(o => o.status === s).length})`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Orders List */}
+            {ordersLoading ? (
+              <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                <div style={{ width: 40, height: 40, border: '3px solid var(--c-border)', borderTop: '3px solid var(--c-purple)', borderRadius: '50%', animation: 'spin .7s linear infinite', margin: '0 auto 16px' }} />
+                <p style={{ color: 'var(--c-gray)' }}>Loading orders…</p>
+              </div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="empty-state" style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--c-border)' }}>
+                <div className="empty-icon">📦</div>
+                <h3>No orders found</h3>
+                <p>{search ? 'Try a different search term' : 'No orders yet — share your store link!'}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <AnimatePresence>
+                  {filteredOrders.map(order => {
+                    const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+                    const StatusIcon = cfg.icon;
+                    const isExpanded = expanded === order._docId;
+                    const ts = order.createdAt?.toDate?.();
+                    const dateStr = ts ? ts.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+
+                    return (
+                      <motion.div key={order._docId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                        style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--c-border)', overflow: 'hidden' }}>
+                        <div style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                          <div style={{ minWidth: 120 }}>
+                            <p style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--c-dark)', fontFamily: 'var(--font-h)' }}>#{order.orderId}</p>
+                            <p style={{ fontSize: '.72rem', color: 'var(--c-gray)', marginTop: 2 }}>{dateStr}</p>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 150 }}>
+                            <p style={{ fontWeight: 600, fontSize: '.88rem' }}>{order.customer?.name}</p>
+                            <p style={{ fontSize: '.75rem', color: 'var(--c-gray)' }}>{order.customer?.phone}</p>
+                          </div>
+                          <div style={{ minWidth: 80, textAlign: 'center' }}>
+                            <p style={{ fontWeight: 600, fontSize: '.9rem' }}>{(order.items || []).reduce((s, i) => s + i.qty, 0)} items</p>
+                            <p style={{ fontSize: '.72rem', color: 'var(--c-gray)' }}>{order.payment?.toUpperCase()}</p>
+                          </div>
+                          <div style={{ minWidth: 90, textAlign: 'right' }}>
+                            <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--c-purple)' }}>{fmt(order.total)}</p>
+                            {order.shipping === 0 && <p style={{ fontSize: '.68rem', color: 'var(--c-green)' }}>Free shipping</p>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: cfg.bg, color: cfg.color, padding: '5px 12px', borderRadius: 50, fontSize: '.76rem', fontWeight: 700, minWidth: 100 }}>
+                            <StatusIcon size={13} /> {cfg.label}
+                          </div>
+                          <select
+                            value={order.status}
+                            onChange={e => updateStatus(order._docId, e.target.value)}
+                            disabled={updating === order._docId}
+                            style={{ padding: '7px 10px', borderRadius: 8, fontSize: '.8rem', border: '1.5px solid var(--c-border)', background: '#fff', cursor: 'pointer', outline: 'none', minWidth: 130, opacity: updating === order._docId ? .6 : 1 }}
+                          >
+                            {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>)}
+                          </select>
+                          <a href={`https://wa.me/91${order.customer?.phone}?text=${encodeURIComponent(waText(order))}`}
+                            target="_blank" rel="noreferrer"
+                            style={{ width: 36, height: 36, borderRadius: '50%', background: '#25D366', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <FaWhatsapp size={17} />
+                          </a>
+                          <button onClick={() => setExpanded(isExpanded ? null : order._docId)} style={{ color: 'var(--c-gray)', padding: 6 }}>
+                            {isExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
+                          </button>
+                        </div>
+
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: .25 }}
+                              style={{ overflow: 'hidden', borderTop: '1px solid var(--c-border)' }}>
+                              <div style={{ padding: '20px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                                <div>
+                                  <p style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-gray)', marginBottom: 12 }}>Order Items</p>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    {(order.items || []).map((item, i) => (
+                                      <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                        {item.image && <img src={item.image} alt={item.name} style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--c-border)', flexShrink: 0 }} />}
+                                        <div style={{ flex: 1 }}>
+                                          <p style={{ fontSize: '.85rem', fontWeight: 500 }}>{item.name}</p>
+                                          <p style={{ fontSize: '.75rem', color: 'var(--c-gray)' }}>{item.qty} × {fmt(item.price)}</p>
+                                        </div>
+                                        <p style={{ fontWeight: 600, fontSize: '.88rem' }}>{fmt(item.price * item.qty)}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div style={{ borderTop: '1px solid var(--c-border)', marginTop: 12, paddingTop: 12, display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                                    <span>Total</span>
+                                    <span style={{ color: 'var(--c-purple)' }}>{fmt(order.total)}</span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <p style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-gray)', marginBottom: 12 }}>Customer & Delivery</p>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                      <FiPhone size={14} style={{ color: 'var(--c-purple)', marginTop: 2, flexShrink: 0 }} />
+                                      <div>
+                                        <p style={{ fontSize: '.85rem', fontWeight: 600 }}>{order.customer?.name}</p>
+                                        <p style={{ fontSize: '.82rem', color: 'var(--c-gray)' }}>{order.customer?.phone}</p>
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                      <FiMail size={14} style={{ color: 'var(--c-purple)', marginTop: 2, flexShrink: 0 }} />
+                                      <p style={{ fontSize: '.82rem', color: 'var(--c-gray)' }}>{order.customer?.email}</p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                      <FiMapPin size={14} style={{ color: 'var(--c-purple)', marginTop: 2, flexShrink: 0 }} />
+                                      <p style={{ fontSize: '.82rem', color: 'var(--c-gray)', lineHeight: 1.6 }}>
+                                        {order.address?.line}<br />
+                                        {order.address?.city}, {order.address?.state} — {order.address?.pincode}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ═══════════════ PRODUCTS TAB ═══════════════ */}
+        {adminTab === 'products' && (
+          <>
+            {/* Product Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }}>
+              {[
+                { label: 'Total Products', value: prodStats.total,    color: 'var(--c-purple)' },
+                { label: 'In Stock',       value: prodStats.inStock,  color: '#16A34A' },
+                { label: 'Low Stock (≤5)', value: prodStats.lowStock, color: '#F59E0B' },
+                { label: 'Out of Stock',   value: prodStats.outStock, color: '#EF4444' },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ background: '#fff', borderRadius: 14, padding: '20px 18px', border: '1px solid var(--c-border)' }}>
+                  <p style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-gray)', marginBottom: 10 }}>{label}</p>
+                  <p style={{ fontSize: '2rem', fontWeight: 700, color }}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Firestore not seeded banner */}
+            {!seeded && !productsLoading && (
+              <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 12, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <FiAlertCircle size={18} style={{ color: '#F59E0B', flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontWeight: 600, fontSize: '.9rem', color: '#92400E' }}>Products are from local file</p>
+                    <p style={{ fontSize: '.8rem', color: '#B45309' }}>Import to Firestore to enable Add/Edit/Delete from dashboard</p>
+                  </div>
+                </div>
                 <button
-                  key={s}
-                  onClick={() => setFilterStatus(s)}
-                  style={{
-                    padding: '7px 14px', borderRadius: 50, fontSize: '.78rem', fontWeight: 600,
-                    border: `1.5px solid ${isActive ? (cfg?.color || 'var(--c-purple)') : 'var(--c-border)'}`,
-                    background: isActive ? (cfg?.bg || 'var(--c-purple-lt)') : '#fff',
-                    color: isActive ? (cfg?.color || 'var(--c-purple)') : 'var(--c-gray)',
-                    cursor: 'pointer', transition: '.2s',
-                    textTransform: 'capitalize',
-                  }}
+                  onClick={seedProducts}
+                  disabled={seeding}
+                  style={{ padding: '9px 18px', background: '#F59E0B', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: '.85rem', flexShrink: 0, opacity: seeding ? .7 : 1 }}
                 >
-                  {s === 'all' ? `All (${orders.length})` : `${cfg.label} (${orders.filter(o => o.status === s).length})`}
+                  {seeding ? 'Importing…' : `Import ${staticProducts.length} Products to Firestore`}
                 </button>
-              );
-            })}
-          </div>
-        </div>
+              </div>
+            )}
 
-        {/* Orders List */}
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <div style={{ width: 40, height: 40, border: '3px solid var(--c-border)', borderTop: '3px solid var(--c-purple)', borderRadius: '50%', animation: 'spin .7s linear infinite', margin: '0 auto 16px' }} />
-            <p style={{ color: 'var(--c-gray)' }}>Loading orders…</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="empty-state" style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--c-border)' }}>
-            <div className="empty-icon">📦</div>
-            <h3>No orders found</h3>
-            <p>{search ? 'Try a different search term' : 'No orders yet — share your store link!'}</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <AnimatePresence>
-              {filtered.map(order => {
-                const cfg      = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
-                const StatusIcon = cfg.icon;
-                const isExpanded = expanded === order._docId;
-                const ts = order.createdAt?.toDate?.();
-                const dateStr = ts ? ts.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+            {/* Product Toolbar */}
+            <div style={{ background: '#fff', borderRadius: 14, padding: '14px 18px', border: '1px solid var(--c-border)', marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
+                <FiSearch size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--c-gray)' }} />
+                <input value={prodSearch} onChange={e => setProdSearch(e.target.value)} placeholder="Search products…"
+                  style={{ width: '100%', paddingLeft: 36, paddingRight: 12, paddingTop: 9, paddingBottom: 9, border: '1.5px solid var(--c-border)', borderRadius: 8, fontSize: '.85rem', outline: 'none' }} />
+              </div>
+              <select value={prodCatFilter} onChange={e => setProdCatFilter(e.target.value)}
+                style={{ padding: '9px 12px', border: '1.5px solid var(--c-border)', borderRadius: 8, fontSize: '.85rem', outline: 'none' }}>
+                <option value="all">All Categories</option>
+                {CATEGORIES.map(c => <option key={c} value={c}>{CAT_LABELS[c]}</option>)}
+              </select>
+              <button
+                onClick={openAdd}
+                disabled={!seeded}
+                title={!seeded ? 'Import products first' : 'Add new product'}
+                style={{ padding: '9px 18px', background: seeded ? 'var(--c-purple)' : 'var(--c-gray2)', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: '.85rem', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, opacity: seeded ? 1 : .6 }}
+              >
+                <FiPlus size={16} /> Add Product
+              </button>
+            </div>
 
-                return (
-                  <motion.div
-                    key={order._docId}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--c-border)', overflow: 'hidden' }}
-                  >
-                    {/* Order Row */}
-                    <div style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            {/* Product List */}
+            {productsLoading ? (
+              <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                <div style={{ width: 40, height: 40, border: '3px solid var(--c-border)', borderTop: '3px solid var(--c-purple)', borderRadius: '50%', animation: 'spin .7s linear infinite', margin: '0 auto 16px' }} />
+                <p style={{ color: 'var(--c-gray)' }}>Loading products…</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {filteredProds.map(p => (
+                  <motion.div key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    style={{ background: '#fff', borderRadius: 12, border: `1px solid ${(p.stock || 0) <= 5 && (p.stock || 0) > 0 ? '#FEF3C7' : (p.stock || 0) === 0 ? '#FEE2E2' : 'var(--c-border)'}`, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
 
-                      {/* Order ID + Date */}
-                      <div style={{ minWidth: 120 }}>
-                        <p style={{ fontWeight: 700, fontSize: '.9rem', color: 'var(--c-dark)', fontFamily: 'var(--font-h)' }}>#{order.orderId}</p>
-                        <p style={{ fontSize: '.72rem', color: 'var(--c-gray)', marginTop: 2 }}>{dateStr}</p>
-                      </div>
-
-                      {/* Customer */}
-                      <div style={{ flex: 1, minWidth: 150 }}>
-                        <p style={{ fontWeight: 600, fontSize: '.88rem' }}>{order.customer?.name}</p>
-                        <p style={{ fontSize: '.75rem', color: 'var(--c-gray)' }}>{order.customer?.phone}</p>
-                      </div>
-
-                      {/* Items count */}
-                      <div style={{ minWidth: 80, textAlign: 'center' }}>
-                        <p style={{ fontWeight: 600, fontSize: '.9rem' }}>{(order.items || []).reduce((s, i) => s + i.qty, 0)} items</p>
-                        <p style={{ fontSize: '.72rem', color: 'var(--c-gray)' }}>{order.payment?.toUpperCase()}</p>
-                      </div>
-
-                      {/* Total */}
-                      <div style={{ minWidth: 90, textAlign: 'right' }}>
-                        <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--c-purple)' }}>{fmt(order.total)}</p>
-                        {order.shipping === 0 && <p style={{ fontSize: '.68rem', color: 'var(--c-green)' }}>Free shipping</p>}
-                      </div>
-
-                      {/* Status Badge */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: cfg.bg, color: cfg.color, padding: '5px 12px', borderRadius: 50, fontSize: '.76rem', fontWeight: 700, minWidth: 100 }}>
-                        <StatusIcon size={13} />
-                        {cfg.label}
-                      </div>
-
-                      {/* Status Update */}
-                      <select
-                        value={order.status}
-                        onChange={e => updateStatus(order._docId, e.target.value)}
-                        disabled={updating === order._docId}
-                        style={{
-                          padding: '7px 10px', borderRadius: 8, fontSize: '.8rem',
-                          border: '1.5px solid var(--c-border)', background: '#fff',
-                          cursor: 'pointer', outline: 'none', minWidth: 130,
-                          opacity: updating === order._docId ? .6 : 1,
-                        }}
-                      >
-                        {ALL_STATUSES.map(s => (
-                          <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
-                        ))}
-                      </select>
-
-                      {/* WhatsApp customer */}
-                      <a
-                        href={`https://wa.me/91${order.customer?.phone}?text=${encodeURIComponent(waText(order))}`}
-                        target="_blank" rel="noreferrer"
-                        style={{ width: 36, height: 36, borderRadius: '50%', background: '#25D366', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                        title="Message customer on WhatsApp"
-                      >
-                        <FaWhatsapp size={17} />
-                      </a>
-
-                      {/* Expand */}
-                      <button onClick={() => setExpanded(isExpanded ? null : order._docId)} style={{ color: 'var(--c-gray)', padding: 6 }}>
-                        {isExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
-                      </button>
+                    {/* Image */}
+                    <div style={{ width: 58, height: 58, borderRadius: 8, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--c-border)', background: '#F7F3EE' }}>
+                      {p.images?.[0] ? (
+                        <img src={p.images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--c-gray2)', fontSize: '1.3rem' }}>🖼️</div>
+                      )}
                     </div>
 
-                    {/* Expanded Details */}
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: .25 }}
-                          style={{ overflow: 'hidden', borderTop: '1px solid var(--c-border)' }}
-                        >
-                          <div style={{ padding: '20px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                    {/* Name + Category */}
+                    <div style={{ flex: 1, minWidth: 140 }}>
+                      <p style={{ fontWeight: 600, fontSize: '.9rem' }}>{p.name}</p>
+                      <p style={{ fontSize: '.76rem', color: 'var(--c-gray)', marginTop: 2 }}>{CAT_LABELS[p.category] || p.category}</p>
+                    </div>
 
-                            {/* Items */}
-                            <div>
-                              <p style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-gray)', marginBottom: 12 }}>Order Items</p>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {(order.items || []).map((item, i) => (
-                                  <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                    {item.image && <img src={item.image} alt={item.name} style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--c-border)', flexShrink: 0 }} />}
-                                    <div style={{ flex: 1 }}>
-                                      <p style={{ fontSize: '.85rem', fontWeight: 500 }}>{item.name}</p>
-                                      <p style={{ fontSize: '.75rem', color: 'var(--c-gray)' }}>{item.qty} × {fmt(item.price)}</p>
-                                    </div>
-                                    <p style={{ fontWeight: 600, fontSize: '.88rem' }}>{fmt(item.price * item.qty)}</p>
-                                  </div>
-                                ))}
-                              </div>
-                              <div style={{ borderTop: '1px solid var(--c-border)', marginTop: 12, paddingTop: 12, display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-                                <span>Total</span>
-                                <span style={{ color: 'var(--c-purple)' }}>{fmt(order.total)}</span>
-                              </div>
-                            </div>
+                    {/* Price */}
+                    <div style={{ textAlign: 'right', minWidth: 100 }}>
+                      <p style={{ fontWeight: 700, color: 'var(--c-purple)' }}>{fmt(p.price)}</p>
+                      <p style={{ fontSize: '.75rem', color: 'var(--c-gray)', textDecoration: 'line-through' }}>{fmt(p.mrp)}</p>
+                    </div>
 
-                            {/* Customer Info */}
-                            <div>
-                              <p style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-gray)', marginBottom: 12 }}>Customer & Delivery</p>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                  <FiPhone size={14} style={{ color: 'var(--c-purple)', marginTop: 2, flexShrink: 0 }} />
-                                  <div>
-                                    <p style={{ fontSize: '.85rem', fontWeight: 600 }}>{order.customer?.name}</p>
-                                    <p style={{ fontSize: '.82rem', color: 'var(--c-gray)' }}>{order.customer?.phone}</p>
-                                  </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                  <FiMail size={14} style={{ color: 'var(--c-purple)', marginTop: 2, flexShrink: 0 }} />
-                                  <p style={{ fontSize: '.82rem', color: 'var(--c-gray)' }}>{order.customer?.email}</p>
-                                </div>
-                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                  <FiMapPin size={14} style={{ color: 'var(--c-purple)', marginTop: 2, flexShrink: 0 }} />
-                                  <p style={{ fontSize: '.82rem', color: 'var(--c-gray)', lineHeight: 1.6 }}>
-                                    {order.address?.line}<br />
-                                    {order.address?.city}, {order.address?.state} — {order.address?.pincode}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {/* Stock */}
+                    <div style={{ textAlign: 'center', minWidth: 80 }}>
+                      <p style={{ fontWeight: 600, fontSize: '.88rem', color: (p.stock || 0) === 0 ? '#EF4444' : (p.stock || 0) <= 5 ? '#F59E0B' : '#16A34A' }}>
+                        {p.stock || 0}
+                      </p>
+                      <p style={{ fontSize: '.7rem', color: 'var(--c-gray)' }}>in stock</p>
+                    </div>
+
+                    {/* Badge */}
+                    {p.badge && (
+                      <span className={`badge badge-${p.badge === 'bestseller' ? 'gold' : p.badge === 'new' ? 'purple' : 'red'}`} style={{ flexShrink: 0 }}>
+                        {p.badge}
+                      </span>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      <button
+                        onClick={() => openEdit(p)}
+                        disabled={!seeded}
+                        style={{ padding: '7px 14px', borderRadius: 7, border: '1.5px solid var(--c-purple)', color: 'var(--c-purple)', fontSize: '.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', opacity: seeded ? 1 : .4 }}
+                      >
+                        <FiEdit2 size={13} /> Edit
+                      </button>
+                      <button
+                        onClick={() => seeded && setDeleteId(p.id)}
+                        disabled={!seeded}
+                        style={{ padding: '7px 14px', borderRadius: 7, border: '1.5px solid #EF4444', color: '#EF4444', fontSize: '.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', opacity: seeded ? 1 : .4 }}
+                      >
+                        <FiTrash2 size={13} /> Delete
+                      </button>
+                    </div>
                   </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
+                ))}
+
+                {filteredProds.length === 0 && (
+                  <div className="empty-state" style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--c-border)' }}>
+                    <div className="empty-icon">🔍</div>
+                    <h3>No products found</h3>
+                    <p>Try a different search or category filter</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
+
+      {/* ═══════════════ ADD / EDIT MODAL ═══════════════ */}
+      <AnimatePresence>
+        {showModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+            onClick={e => e.target === e.currentTarget && setShowModal(false)}>
+            <motion.div initial={{ scale: .95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: .95 }}
+              style={{ background: '#fff', borderRadius: 20, padding: '28px 32px', width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto' }}>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <h3 style={{ fontFamily: 'var(--font-h)', fontSize: '1.4rem' }}>
+                  {editingProd ? 'Edit Product' : 'Add New Product'}
+                </h3>
+                <button onClick={() => setShowModal(false)} style={{ color: 'var(--c-gray)', padding: 4 }}><FiX size={22} /></button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Name */}
+                <div>
+                  <label style={lbl}>Product Name *</label>
+                  {inp('name', 'e.g. Royal Kundan Necklace')}
+                </div>
+
+                {/* Category + Badge */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={lbl}>Category *</label>
+                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                      style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--c-border)', borderRadius: 8, fontSize: '.88rem', outline: 'none' }}>
+                      {CATEGORIES.map(c => <option key={c} value={c}>{CAT_LABELS[c]}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Badge</label>
+                    <select value={form.badge} onChange={e => setForm(f => ({ ...f, badge: e.target.value }))}
+                      style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--c-border)', borderRadius: 8, fontSize: '.88rem', outline: 'none' }}>
+                      <option value="">No Badge</option>
+                      <option value="new">New Arrival</option>
+                      <option value="bestseller">Bestseller</option>
+                      <option value="limited">Limited Edition</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Price + MRP */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={lbl}>Selling Price (₹) *</label>
+                    {inp('price', 'e.g. 1299', 'number')}
+                  </div>
+                  <div>
+                    <label style={lbl}>Original Price / MRP (₹) *</label>
+                    {inp('mrp', 'e.g. 2199', 'number')}
+                  </div>
+                </div>
+
+                {/* Stock */}
+                <div>
+                  <label style={lbl}>Stock Quantity</label>
+                  {inp('stock', 'e.g. 20', 'number')}
+                </div>
+
+                {/* Image URL */}
+                <div>
+                  <label style={lbl}>Image URL or Path</label>
+                  {inp('imageUrl', '/necklace1.jpeg  or  https://...')}
+                  {form.imageUrl && (
+                    <img src={form.imageUrl} alt="preview" onError={e => e.target.style.display='none'}
+                      style={{ marginTop: 8, height: 80, borderRadius: 8, border: '1px solid var(--c-border)', objectFit: 'cover' }} />
+                  )}
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label style={lbl}>Description</label>
+                  <textarea value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))}
+                    placeholder="Describe the product…" rows={3}
+                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--c-border)', borderRadius: 8, fontSize: '.88rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
+                </div>
+
+                {/* Material + Weight */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={lbl}>Material</label>
+                    {inp('material', 'e.g. Gold Plated Brass')}
+                  </div>
+                  <div>
+                    <label style={lbl}>Weight</label>
+                    {inp('weight', 'e.g. 85g')}
+                  </div>
+                </div>
+
+                {/* Care */}
+                <div>
+                  <label style={lbl}>Care Instructions</label>
+                  {inp('care', 'e.g. Avoid water and perfume contact')}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+                <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1.5px solid var(--c-border)', fontWeight: 600, background: '#fff' }}>
+                  Cancel
+                </button>
+                <button onClick={handleSave} disabled={saving}
+                  style={{ flex: 2, padding: '12px', borderRadius: 10, background: 'var(--c-purple)', color: '#fff', fontWeight: 700, opacity: saving ? .7 : 1 }}>
+                  {saving ? 'Saving…' : editingProd ? 'Save Changes' : 'Add Product'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════════ DELETE CONFIRM ═══════════════ */}
+      <AnimatePresence>
+        {deleteId && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <motion.div initial={{ scale: .9 }} animate={{ scale: 1 }} exit={{ scale: .9 }}
+              style={{ background: '#fff', borderRadius: 16, padding: '28px 32px', maxWidth: 380, width: '100%', textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🗑️</div>
+              <h3 style={{ fontFamily: 'var(--font-h)', marginBottom: 8 }}>Delete Product?</h3>
+              <p style={{ color: 'var(--c-gray)', fontSize: '.88rem', marginBottom: 24 }}>This will permanently remove the product from your store.</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setDeleteId(null)} style={{ flex: 1, padding: '11px', borderRadius: 9, border: '1.5px solid var(--c-border)', fontWeight: 600 }}>Cancel</button>
+                <button onClick={handleDelete} style={{ flex: 1, padding: '11px', borderRadius: 9, background: '#EF4444', color: '#fff', fontWeight: 700 }}>Delete</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 768px) {
-          .admin-order-row select { width: 100% !important; }
-          .admin-toolbar { flex-direction: column !important; align-items: stretch !important; }
-          .admin-toolbar > div { justify-content: flex-start !important; }
+          .stats-grid-admin { grid-template-columns: repeat(2,1fr) !important; }
         }
         @media (max-width: 480px) {
+          .stats-grid-admin { grid-template-columns: 1fr 1fr !important; }
           .stats-grid-admin > div { padding: 14px 12px !important; }
         }
       `}</style>
     </div>
   );
 }
+
+const lbl = { display: 'block', fontSize: '.76rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-gray)', marginBottom: 6 };
