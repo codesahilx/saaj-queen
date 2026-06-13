@@ -240,7 +240,7 @@ export default function Admin() {
         </div>
       </div>
 
-      <div className="container" style={{ padding: '32px 24px' }}>
+      <div className="container admin-container" style={{ padding: '32px 24px' }}>
 
         {/* Tab Switcher */}
         <div style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 14, padding: 5, marginBottom: 28, border: '1px solid var(--c-border)', width: 'fit-content' }}>
@@ -382,7 +382,7 @@ export default function Admin() {
                           {isExpanded && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: .25 }}
                               style={{ overflow: 'hidden', borderTop: '1px solid var(--c-border)' }}>
-                              <div style={{ padding: '20px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                              <div className="order-details-grid" style={{ padding: '20px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                                 <div>
                                   <p style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--c-gray)', marginBottom: 12 }}>Order Items</p>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -442,7 +442,7 @@ export default function Admin() {
         {adminTab === 'products' && (
           <>
             {/* Product Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }}>
+            <div className="prod-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }}>
               {[
                 { label: 'Total Products', value: prodStats.total,    color: 'var(--c-purple)' },
                 { label: 'In Stock',       value: prodStats.inStock,  color: '#16A34A' },
@@ -713,12 +713,23 @@ export default function Admin() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 768px) {
+
+        @media (max-width: 860px) {
+          /* Order stats: 2 col, Revenue full width */
           .stats-grid-admin { grid-template-columns: repeat(2,1fr) !important; }
+          .stats-grid-admin > div:last-child { grid-column: span 2; }
+          /* Product stats: 2 col */
+          .prod-stats-grid { grid-template-columns: repeat(2,1fr) !important; }
+          /* Expanded order details: stack vertically */
+          .order-details-grid { grid-template-columns: 1fr !important; }
+          /* Admin container padding */
+          .admin-container { padding: 20px 14px !important; }
         }
-        @media (max-width: 480px) {
-          .stats-grid-admin { grid-template-columns: 1fr 1fr !important; }
+
+        @media (max-width: 600px) {
+          /* Order card: status select full width */
           .stats-grid-admin > div { padding: 14px 12px !important; }
+          .prod-stats-grid > div { padding: 14px 12px !important; }
         }
       `}</style>
     </div>

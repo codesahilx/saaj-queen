@@ -323,6 +323,9 @@ input, select, textarea { font-family: inherit; }
   .checkout-layout  { grid-template-columns: 1fr; }
   .footer-grid      { grid-template-columns: 1fr 1fr; gap: 28px; }
   .stats-grid-admin { grid-template-columns: repeat(2,1fr); }
+  .stats-grid-admin > div:last-child { grid-column: span 2; }
+  .prod-stats-grid  { grid-template-columns: repeat(2,1fr) !important; }
+  .order-details-grid { grid-template-columns: 1fr !important; }
   .bridal-banner-img { height: 300px; }
   .about-img        { height: 300px; }
 }
@@ -341,10 +344,13 @@ input, select, textarea { font-family: inherit; }
 
 /* small phone */
 @media (max-width: 480px) {
-  .insta-grid     { grid-template-columns: repeat(2,1fr); }
-  .cat-grid       { grid-template-columns: repeat(2,1fr); }
+  .insta-grid       { grid-template-columns: repeat(2,1fr); }
+  .cat-grid         { grid-template-columns: repeat(2,1fr); }
   .stats-grid-admin { grid-template-columns: repeat(2,1fr); }
-  .footer-grid    { grid-template-columns: 1fr; }
+  .stats-grid-admin > div:last-child { grid-column: span 2; }
+  .footer-grid      { grid-template-columns: 1fr; }
   .newsletter-input { width: 100% !important; }
   .newsletter-form  { flex-direction: column !important; }
+  .logo-text        { display: none !important; }
+  .prod-stats-grid  { grid-template-columns: repeat(2,1fr) !important; }
 }
