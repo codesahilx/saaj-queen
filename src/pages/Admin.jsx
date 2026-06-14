@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
   collection, query, orderBy, onSnapshot, doc, updateDoc,
-  addDoc, deleteDoc, serverTimestamp,
+  addDoc, deleteDoc, serverTimestamp, setDoc,
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPackage, FiTruck, FiCheck, FiX, FiClock, FiSearch, FiRefreshCw,
   FiChevronDown, FiChevronUp, FiPhone, FiMail, FiMapPin,
-  FiPlus, FiEdit2, FiTrash2, FiShoppingBag, FiUploadCloud,
+  FiPlus, FiEdit2, FiTrash2, FiShoppingBag, FiUploadCloud, FiImage,
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { db } from '../firebase';
@@ -61,6 +61,10 @@ export default function Admin() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading,      setUploading]      = useState(false);
 
+  // ─── Category images state ────────────────────────────────────────────
+  const [catImages,    setCatImages]    = useState({});
+  const [catUploading, setCatUploading] = useState({});
+
   // ─── Firestore listeners ─────────────────────────────────────────────
   useEffect(() => {
     const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
@@ -78,6 +82,13 @@ export default function Admin() {
     }, () => {
       setProductsLoading(false);
     });
+  }, []);
+
+  useEffect(() => {
+    return onSnapshot(doc(db, 'settings', 'categoryImages'),
+      snap => { if (snap.exists()) setCatImages(snap.data()); },
+      () => {}
+    );
   }, []);
 
   // ─── Orders helpers ──────────────────────────────────────────────────
@@ -183,6 +194,29 @@ export default function Admin() {
     }
   };
 
+  const handleCatImageUpload = async (catId, file) => {
+    if (!file) return;
+    setCatUploading(u => ({ ...u, [catId]: true }));
+    try {
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append('file', compressed, 'category.jpg');
+      fd.append('upload_preset', CLOUDINARY_PRESET);
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
+        { method: 'POST', body: fd }
+      );
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      await setDoc(doc(db, 'settings', 'categoryImages'), { [catId]: data.secure_url }, { merge: true });
+      addToast(`${CAT_LABELS[catId]} image updated!`, 'success');
+    } catch {
+      addToast('Upload failed', 'error');
+    } finally {
+      setCatUploading(u => ({ ...u, [catId]: false }));
+    }
+  };
+
   const handleSave = async () => {
     if (!form.name || !form.price || !form.mrp) {
       addToast('Name, Price and MRP are required', 'error'); return;
@@ -264,8 +298,9 @@ export default function Admin() {
         {/* Tab Switcher */}
         <div style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 14, padding: 5, marginBottom: 28, border: '1px solid var(--c-border)', width: 'fit-content' }}>
           {[
-            { id: 'orders',   label: 'Orders',   Icon: FiPackage },
-            { id: 'products', label: 'Products', Icon: FiShoppingBag },
+            { id: 'orders',     label: 'Orders',     Icon: FiPackage },
+            { id: 'products',   label: 'Products',   Icon: FiShoppingBag },
+            { id: 'categories', label: 'Categories', Icon: FiImage },
           ].map(({ id, label, Icon }) => (
             <button
               key={id}
@@ -458,6 +493,57 @@ export default function Admin() {
         )}
 
         {/* ═══════════════ PRODUCTS TAB ═══════════════ */}
+        {/* ═══════════════ CATEGORIES TAB ═══════════════ */}
+        {adminTab === 'categories' && (
+          <div>
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontFamily: 'var(--font-h)', fontSize: '1.2rem', marginBottom: 6 }}>Category Images</h3>
+              <p style={{ color: 'var(--c-gray)', fontSize: '.85rem' }}>
+                Ye images Home page pe "Shop By Category" section mein dikhti hain. Har category ke liye ek acchi image upload karo.
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+              {CATEGORIES.map(catId => (
+                <div key={catId} style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--c-border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ aspectRatio: '1', background: '#EDE9FE', position: 'relative', overflow: 'hidden' }}>
+                    {catImages[catId] ? (
+                      <img src={catImages[catId]} alt={CAT_LABELS[catId]}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+                        <FiImage size={32} style={{ color: 'var(--c-purple)', opacity: .4 }} />
+                        <span style={{ fontSize: '.75rem', color: 'var(--c-gray)' }}>No image</span>
+                      </div>
+                    )}
+                    {catUploading[catId] && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 32, height: 32, border: '3px solid rgba(255,255,255,.3)', borderTop: '3px solid #fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding: '12px 14px' }}>
+                    <p style={{ fontWeight: 600, fontSize: '.88rem', marginBottom: 10 }}>{CAT_LABELS[catId]}</p>
+                    <label style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '8px', border: '1.5px dashed var(--c-purple)',
+                      borderRadius: 8, cursor: catUploading[catId] ? 'not-allowed' : 'pointer',
+                      background: 'var(--c-purple-lt)', color: 'var(--c-purple)',
+                      fontSize: '.78rem', fontWeight: 600,
+                      opacity: catUploading[catId] ? .6 : 1,
+                    }}>
+                      <FiUploadCloud size={14} />
+                      {catImages[catId] ? 'Change Image' : 'Upload Image'}
+                      <input type="file" accept="image/*" style={{ display: 'none' }}
+                        disabled={catUploading[catId]}
+                        onChange={e => { handleCatImageUpload(catId, e.target.files[0]); e.target.value = ''; }} />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {adminTab === 'products' && (
           <>
             {/* Product Stats */}

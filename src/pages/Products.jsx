@@ -18,18 +18,17 @@ const CAT_OPTIONS = [
 ];
 
 const SORT_OPTIONS = [
-  { value: 'popular',  label: 'Most Popular' },
+  { value: 'all',      label: 'All' },
   { value: 'new',      label: 'Newest First' },
   { value: 'priceLow', label: 'Price: Low to High' },
   { value: 'priceHigh', label: 'Price: High to Low' },
-  { value: 'rating',   label: 'Top Rated' },
 ];
 
 export default function Products() {
   const { products, loading: productsLoading } = useProducts();
   const [searchParams] = useSearchParams();
   const [category, setCategory] = useState(searchParams.get('category') || 'all');
-  const [sort,     setSort]     = useState('popular');
+  const [sort,     setSort]     = useState('all');
   const [priceMax, setPriceMax] = useState(5000);
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -54,9 +53,8 @@ export default function Products() {
     switch (sort) {
       case 'priceLow':  return list.sort((a, b) => a.price - b.price);
       case 'priceHigh': return list.sort((a, b) => b.price - a.price);
-      case 'rating':    return list.sort((a, b) => b.rating - a.rating);
       case 'new':       return list.filter(p => p.badge === 'new').concat(list.filter(p => p.badge !== 'new'));
-      default:          return list.sort((a, b) => b.reviews - a.reviews);
+      default:          return list;
     }
   }, [category, sort, priceMax, query, badge, isSale]);
 

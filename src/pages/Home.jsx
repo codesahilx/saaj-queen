@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiArrowRight, FiTruck, FiRefreshCw, FiShield, FiHeadphones, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { categories, heroSlides } from '../data/products';
 import { useProducts } from '../hooks/useProducts';
+import { onSnapshot, doc } from 'firebase/firestore';
+import { db } from '../firebase';
 import ProductCard from '../components/ProductCard';
 
 const CAT_EMOJI = {
@@ -14,7 +16,15 @@ const CAT_EMOJI = {
 export default function Home() {
   const { products } = useProducts();
   const navigate = useNavigate();
-  const [imgErrors, setImgErrors] = useState({});
+  const [imgErrors,   setImgErrors]   = useState({});
+  const [catImagesDB, setCatImagesDB] = useState({});
+
+  useEffect(() => {
+    return onSnapshot(doc(db, 'settings', 'categoryImages'),
+      snap => { if (snap.exists()) setCatImagesDB(snap.data()); },
+      () => {}
+    );
+  }, []);
   const [slideIdx, setSlideIdx] = useState(0);
   const [direction, setDirection] = useState(1);
   const [countdown, setCountdown] = useState({ days: '03', hours: '12', mins: '45', secs: '00' });
@@ -313,19 +323,22 @@ export default function Home() {
                   }}
                     className="cat-ring"
                   >
-                    {imgErrors[cat.id] ? (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.4rem', background: 'var(--c-purple-lt)' }}>
-                        {CAT_EMOJI[cat.id]}
-                      </div>
-                    ) : (
-                      <img
-                        src={cat.img}
-                        alt={cat.label}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .4s' }}
-                        className="cat-img"
-                        onError={() => setImgErrors(prev => ({ ...prev, [cat.id]: true }))}
-                      />
-                    )}
+                    {(() => {
+                      const imgSrc = catImagesDB[cat.id] || cat.img;
+                      return imgSrc && !imgErrors[cat.id] ? (
+                        <img
+                          src={imgSrc}
+                          alt={cat.label}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .4s' }}
+                          className="cat-img"
+                          onError={() => setImgErrors(prev => ({ ...prev, [cat.id]: true }))}
+                        />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.4rem', background: 'var(--c-purple-lt)' }}>
+                          {CAT_EMOJI[cat.id]}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <p style={{ fontSize: '.85rem', fontWeight: 600, color: 'var(--c-dark)' }}>{cat.label}</p>
                 </Link>
