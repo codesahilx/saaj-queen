@@ -7,10 +7,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPackage, FiTruck, FiCheck, FiX, FiClock, FiSearch, FiRefreshCw,
   FiChevronDown, FiChevronUp, FiPhone, FiMail, FiMapPin,
-  FiPlus, FiEdit2, FiTrash2, FiShoppingBag, FiAlertCircle,
+  FiPlus, FiEdit2, FiTrash2, FiShoppingBag, FiAlertCircle, FiUploadCloud,
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
-import { db } from '../firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../firebase';
 import { products as staticProducts } from '../data/products';
 import { useToast } from '../context/ToastContext';
 
@@ -59,6 +60,8 @@ export default function Admin() {
   const [deleteId,       setDeleteId]       = useState(null);
   const [prodSearch,     setProdSearch]     = useState('');
   const [prodCatFilter,  setProdCatFilter]  = useState('all');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading,      setUploading]      = useState(false);
 
   // ─── Firestore listeners ─────────────────────────────────────────────
   useEffect(() => {
@@ -160,6 +163,26 @@ export default function Admin() {
       stock: p.stock || '', imageUrl: p.images?.[0] || '',
     });
     setShowModal(true);
+  };
+
+  const handleImageUpload = (file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { addToast('Image must be under 5MB', 'error'); return; }
+    setUploading(true);
+    setUploadProgress(0);
+    const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+    task.on('state_changed',
+      snap => setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+      () => { addToast('Upload failed', 'error'); setUploading(false); },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        setForm(f => ({ ...f, imageUrl: url }));
+        setUploading(false);
+        setUploadProgress(0);
+        addToast('Image uploaded!', 'success');
+      }
+    );
   };
 
   const handleSave = async () => {
@@ -641,13 +664,48 @@ export default function Admin() {
                   {inp('stock', 'e.g. 20', 'number')}
                 </div>
 
-                {/* Image URL */}
+                {/* Image Upload */}
                 <div>
-                  <label style={lbl}>Image URL or Path</label>
-                  {inp('imageUrl', '/necklace1.jpeg  or  https://...')}
-                  {form.imageUrl && (
-                    <img src={form.imageUrl} alt="preview" onError={e => e.target.style.display='none'}
-                      style={{ marginTop: 8, height: 80, borderRadius: 8, border: '1px solid var(--c-border)', objectFit: 'cover' }} />
+                  <label style={lbl}>Product Image</label>
+
+                  {/* Upload button */}
+                  <label style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 16px', border: '1.5px dashed var(--c-purple)',
+                    borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
+                    background: 'var(--c-purple-lt)', color: 'var(--c-purple)',
+                    fontSize: '.88rem', fontWeight: 600, marginBottom: 10,
+                    opacity: uploading ? .6 : 1,
+                  }}>
+                    <FiUploadCloud size={18} />
+                    {uploading ? `Uploading… ${uploadProgress}%` : 'Upload from Device'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      disabled={uploading}
+                      onChange={e => handleImageUpload(e.target.files[0])}
+                    />
+                  </label>
+
+                  {/* Progress bar */}
+                  {uploading && (
+                    <div style={{ height: 4, background: 'var(--c-border)', borderRadius: 4, marginBottom: 10, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'var(--c-purple)', borderRadius: 4, transition: 'width .3s' }} />
+                    </div>
+                  )}
+
+                  {/* Preview */}
+                  {form.imageUrl && !uploading && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <img src={form.imageUrl} alt="preview"
+                        onError={e => e.target.style.display = 'none'}
+                        style={{ height: 72, width: 72, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--c-border)', flexShrink: 0 }} />
+                      <button onClick={() => setForm(f => ({ ...f, imageUrl: '' }))}
+                        style={{ fontSize: '.78rem', color: 'var(--c-red)', background: 'none', cursor: 'pointer' }}>
+                        Remove
+                      </button>
+                    </div>
                   )}
                 </div>
 
