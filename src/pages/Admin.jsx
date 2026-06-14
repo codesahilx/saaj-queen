@@ -30,7 +30,7 @@ const BADGES = ['', 'new', 'bestseller', 'limited'];
 
 const EMPTY_FORM = {
   name: '', category: 'necklace', price: '', mrp: '', badge: '',
-  desc: '', material: '', weight: '', care: '', stock: '', imageUrl: '',
+  desc: '', material: '', weight: '', care: '', stock: '', images: [],
 };
 
 export default function Admin() {
@@ -160,7 +160,7 @@ export default function Admin() {
       price: p.price || '', mrp: p.mrp || '', badge: p.badge || '',
       desc: p.desc || '', material: p.material || '',
       weight: p.weight || '', care: p.care || '',
-      stock: p.stock || '', imageUrl: p.images?.[0] || '',
+      stock: p.stock || '', images: p.images || [],
     });
     setShowModal(true);
   };
@@ -177,7 +177,7 @@ export default function Admin() {
       () => { addToast('Upload failed', 'error'); setUploading(false); },
       async () => {
         const url = await getDownloadURL(task.snapshot.ref);
-        setForm(f => ({ ...f, imageUrl: url }));
+        setForm(f => ({ ...f, images: [...f.images, url] }));
         setUploading(false);
         setUploadProgress(0);
         addToast('Image uploaded!', 'success');
@@ -202,7 +202,7 @@ export default function Admin() {
         weight:   form.weight.trim(),
         care:     form.care.trim(),
         stock:    Number(form.stock) || 0,
-        images:   [form.imageUrl.trim()].filter(Boolean),
+        images:   form.images,
         rating:   editingProd?.rating || 4.5,
         reviews:  editingProd?.reviews || 0,
       };
@@ -664,9 +664,37 @@ export default function Admin() {
                   {inp('stock', 'e.g. 20', 'number')}
                 </div>
 
-                {/* Image Upload */}
+                {/* Multi-Image Upload */}
                 <div>
-                  <label style={lbl}>Product Image</label>
+                  <label style={lbl}>
+                    Product Photos
+                    <span style={{ fontSize: '.7rem', fontWeight: 400, color: 'var(--c-gray)', marginLeft: 6 }}>
+                      (1st photo = cover · max 5MB each)
+                    </span>
+                  </label>
+
+                  {/* Uploaded images grid */}
+                  {form.images.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+                      {form.images.map((url, idx) => (
+                        <div key={url} style={{ position: 'relative', flexShrink: 0 }}>
+                          <img src={url} alt={`photo ${idx + 1}`}
+                            style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'cover', border: `2px solid ${idx === 0 ? 'var(--c-purple)' : 'var(--c-border)'}` }} />
+                          {idx === 0 && (
+                            <span style={{ position: 'absolute', top: 3, left: 3, background: 'var(--c-purple)', color: '#fff', fontSize: '.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 4 }}>
+                              COVER
+                            </span>
+                          )}
+                          <button
+                            onClick={() => setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))}
+                            style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: 'var(--c-red)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.7rem', fontWeight: 700, border: '2px solid #fff' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Upload button */}
                   <label style={{
@@ -674,37 +702,24 @@ export default function Admin() {
                     padding: '10px 16px', border: '1.5px dashed var(--c-purple)',
                     borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
                     background: 'var(--c-purple-lt)', color: 'var(--c-purple)',
-                    fontSize: '.88rem', fontWeight: 600, marginBottom: 10,
+                    fontSize: '.88rem', fontWeight: 600,
                     opacity: uploading ? .6 : 1,
                   }}>
                     <FiUploadCloud size={18} />
-                    {uploading ? `Uploading… ${uploadProgress}%` : 'Upload from Device'}
+                    {uploading ? `Uploading… ${uploadProgress}%` : `Add Photo ${form.images.length > 0 ? `(${form.images.length} added)` : ''}`}
                     <input
                       type="file"
                       accept="image/*"
                       style={{ display: 'none' }}
                       disabled={uploading}
-                      onChange={e => handleImageUpload(e.target.files[0])}
+                      onChange={e => { handleImageUpload(e.target.files[0]); e.target.value = ''; }}
                     />
                   </label>
 
                   {/* Progress bar */}
                   {uploading && (
-                    <div style={{ height: 4, background: 'var(--c-border)', borderRadius: 4, marginBottom: 10, overflow: 'hidden' }}>
+                    <div style={{ height: 4, background: 'var(--c-border)', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'var(--c-purple)', borderRadius: 4, transition: 'width .3s' }} />
-                    </div>
-                  )}
-
-                  {/* Preview */}
-                  {form.imageUrl && !uploading && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <img src={form.imageUrl} alt="preview"
-                        onError={e => e.target.style.display = 'none'}
-                        style={{ height: 72, width: 72, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--c-border)', flexShrink: 0 }} />
-                      <button onClick={() => setForm(f => ({ ...f, imageUrl: '' }))}
-                        style={{ fontSize: '.78rem', color: 'var(--c-red)', background: 'none', cursor: 'pointer' }}>
-                        Remove
-                      </button>
                     </div>
                   )}
                 </div>
