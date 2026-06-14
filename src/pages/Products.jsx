@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiFilter, FiX, FiChevronDown, FiGrid, FiList, FiSliders } from 'react-icons/fi';
+import { FiX, FiSliders } from 'react-icons/fi';
 import { useProducts } from '../hooks/useProducts';
 import ProductCard from '../components/ProductCard';
 
@@ -17,28 +17,15 @@ const CAT_OPTIONS = [
   { value: 'giftbox',  label: 'Gift Boxes' },
 ];
 
-const SORT_OPTIONS = [
-  { value: 'all',      label: 'All' },
-  { value: 'new',      label: 'Newest First' },
-  { value: 'priceLow', label: 'Price: Low to High' },
-  { value: 'priceHigh', label: 'Price: High to Low' },
-];
-
 export default function Products() {
   const { products, loading: productsLoading } = useProducts();
   const [searchParams] = useSearchParams();
-  const [category, setCategory] = useState(searchParams.get('category') || 'all');
-  const [sort,     setSort]     = useState('all');
-  const [priceMax, setPriceMax] = useState(99999);
+  const [category,   setCategory]   = useState(searchParams.get('category') || 'all');
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const maxPrice = useMemo(() =>
-    products.length ? Math.max(...products.map(p => p.price || 0), 5000) : 5000,
-  [products]);
-
-  const query   = searchParams.get('q') || '';
-  const badge   = searchParams.get('badge') || '';
-  const isSale  = searchParams.get('sale') === '1';
+  const query  = searchParams.get('q') || '';
+  const badge  = searchParams.get('badge') || '';
+  const isSale = searchParams.get('sale') === '1';
 
   useEffect(() => {
     const cat = searchParams.get('category');
@@ -48,25 +35,17 @@ export default function Products() {
   const filtered = useMemo(() => {
     if (products.length) console.log('Unique categories in DB:', [...new Set(products.map(p => p.category))]);
     let list = [...products];
-
-    if (query)    list = list.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
-    if (badge)    list = list.filter(p => p.badge === badge);
-    if (isSale)   list = list.filter(p => p.mrp - p.price > 0);
+    if (query)              list = list.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+    if (badge)              list = list.filter(p => p.badge === badge);
+    if (isSale)             list = list.filter(p => p.mrp - p.price > 0);
     if (category !== 'all') list = list.filter(p => p.category === category);
-    if (priceMax < 99999) list = list.filter(p => (p.price || 0) <= priceMax);
+    return list;
+  }, [category, query, badge, isSale, products]);
 
-    switch (sort) {
-      case 'priceLow':  return list.sort((a, b) => a.price - b.price);
-      case 'priceHigh': return list.sort((a, b) => b.price - a.price);
-      case 'new':       return list.filter(p => p.badge === 'new').concat(list.filter(p => p.badge !== 'new'));
-      default:          return list;
-    }
-  }, [category, sort, priceMax, query, badge, isSale]);
-
-  const pageTitle = query ? `Search: "${query}"`
-    : badge === 'new' ? 'New Arrivals'
-    : isSale ? 'Sale'
-    : category !== 'all' ? (CAT_OPTIONS.find(c => c.value === category)?.label || 'Collections')
+  const pageTitle = query       ? `Search: "${query}"`
+    : badge === 'new'           ? 'New Arrivals'
+    : isSale                    ? 'Sale'
+    : category !== 'all'        ? (CAT_OPTIONS.find(c => c.value === category)?.label || 'Collections')
     : 'All Jewellery';
 
   return (
@@ -94,13 +73,8 @@ export default function Products() {
             <FiSliders size={15} /> Filters
           </button>
 
-          {/* Mobile overlay */}
           {filterOpen && (
-            <div
-              className="overlay"
-              style={{ zIndex: 749 }}
-              onClick={() => setFilterOpen(false)}
-            />
+            <div className="overlay" style={{ zIndex: 749 }} onClick={() => setFilterOpen(false)} />
           )}
 
           <div className="products-layout">
@@ -143,67 +117,26 @@ export default function Products() {
                 </div>
               </div>
 
-              {/* Price */}
-              <div style={{ marginBottom: 28 }}>
-                <p style={{ fontSize: '.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--c-gray)', marginBottom: 12 }}>
-                  Max Price: {priceMax >= maxPrice ? 'All' : '₹' + priceMax.toLocaleString('en-IN')}
-                </p>
-                <input
-                  type="range" min={0} max={maxPrice} step={100}
-                  value={Math.min(priceMax, maxPrice)}
-                  onChange={e => setPriceMax(+e.target.value)}
-                  style={{ width: '100%', accentColor: 'var(--c-purple)' }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.74rem', color: 'var(--c-gray)', marginTop: 6 }}>
-                  <span>₹0</span><span>₹{maxPrice.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-
-              {/* Reset */}
               <button
-                onClick={() => { setCategory('all'); setPriceMax(99999); setSort('all'); }}
+                onClick={() => setCategory('all')}
                 style={{ fontSize: '.82rem', color: 'var(--c-purple)', fontWeight: 500 }}
               >
-                Clear All Filters
+                Clear Filter
               </button>
               <button
                 className="mobile-filter-btn btn btn-dark btn-full"
                 style={{ marginTop: 20 }}
                 onClick={() => setFilterOpen(false)}
               >
-                Apply Filters
+                Apply
               </button>
             </aside>
 
             {/* Products Area */}
             <div>
-              {/* Toolbar */}
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                marginBottom: 24, flexWrap: 'wrap', gap: 12,
-              }}>
-                <p style={{ fontSize: '.88rem', color: 'var(--c-gray)' }}>
-                  Showing <strong style={{ color: 'var(--c-dark)' }}>{filtered.length}</strong> products
-                  {products.length > 0 && filtered.length === 0 && (
-                    <span style={{ color: '#F59E0B', marginLeft: 8, fontSize: '.8rem' }}>
-                      ({products.length} total loaded — category mismatch?)
-                    </span>
-                  )}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: '.82rem', color: 'var(--c-gray)' }}>Sort by:</span>
-                  <select
-                    value={sort}
-                    onChange={e => setSort(e.target.value)}
-                    className="form-select"
-                    style={{ width: 180 }}
-                  >
-                    {SORT_OPTIONS.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <p style={{ fontSize: '.88rem', color: 'var(--c-gray)', marginBottom: 24 }}>
+                Showing <strong style={{ color: 'var(--c-dark)' }}>{filtered.length}</strong> products
+              </p>
 
               {/* Grid */}
               {productsLoading ? (
@@ -216,9 +149,9 @@ export default function Products() {
                 <div className="empty-state">
                   <div className="empty-icon">🔍</div>
                   <h3>No products found</h3>
-                  <p>Try adjusting your filters or search terms</p>
-                  <button className="btn btn-dark" onClick={() => { setCategory('all'); setPriceMax(99999); }}>
-                    Clear Filters
+                  <p>Try a different category</p>
+                  <button className="btn btn-dark" onClick={() => setCategory('all')}>
+                    View All Products
                   </button>
                 </div>
               ) : (

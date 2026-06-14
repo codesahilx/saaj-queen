@@ -272,7 +272,7 @@ export default function Home() {
           <div className="trust-grid" style={{ borderTop: '1px solid rgba(255,255,255,.06)' }}>
             {[
               { icon: FiTruck,       title: 'Free Shipping',   sub: 'On orders above ₹999' },
-              { icon: FiRefreshCw,   title: 'Easy Returns',    sub: '7-day hassle-free returns' },
+              { icon: FiRefreshCw,   title: 'Easy Returns',    sub: '3-day hassle-free returns' },
               { icon: FiShield,      title: '100% Authentic',  sub: 'Certified quality jewellery' },
               { icon: FiHeadphones,  title: '24/7 Support',    sub: 'Dedicated customer care' },
             ].map(({ icon: Icon, title, sub }) => (
