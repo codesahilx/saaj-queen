@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiArrowRight, FiTruck, FiRefreshCw, FiShield, FiHeadphones, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiArrowRight, FiRefreshCw, FiShield, FiHeadphones, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { categories, heroSlides } from '../data/products';
 import { useProducts } from '../hooks/useProducts';
 import { onSnapshot, doc } from 'firebase/firestore';
@@ -269,17 +269,16 @@ export default function Home() {
       {/* ── Trust Bar ── */}
       <section style={{ background: 'var(--c-dark)', padding: '0' }}>
         <div className="container">
-          <div className="trust-grid" style={{ borderTop: '1px solid rgba(255,255,255,.06)' }}>
+          <div className="trust-grid" style={{ borderTop: '1px solid rgba(255,255,255,.06)', display: 'flex', justifyContent: 'center' }}>
             {[
-              { icon: FiTruck,       title: 'Free Shipping',   sub: 'On orders above ₹999' },
               { icon: FiRefreshCw,   title: 'Easy Returns',    sub: '3-day hassle-free returns' },
               { icon: FiShield,      title: '100% Authentic',  sub: 'Certified quality jewellery' },
               { icon: FiHeadphones,  title: '24/7 Support',    sub: 'Dedicated customer care' },
-            ].map(({ icon: Icon, title, sub }) => (
+            ].map(({ icon: Icon, title, sub }, i, arr) => (
               <div key={title} style={{
                 display: 'flex', alignItems: 'center', gap: 14,
-                padding: '22px 24px',
-                borderRight: '1px solid rgba(255,255,255,.06)',
+                padding: '22px 40px',
+                borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,.06)' : 'none',
                 color: '#fff',
               }}>
                 <Icon size={22} style={{ color: 'var(--c-gold)', flexShrink: 0 }} />
