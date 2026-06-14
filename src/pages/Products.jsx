@@ -29,8 +29,12 @@ export default function Products() {
   const [searchParams] = useSearchParams();
   const [category, setCategory] = useState(searchParams.get('category') || 'all');
   const [sort,     setSort]     = useState('all');
-  const [priceMax, setPriceMax] = useState(5000);
+  const [priceMax, setPriceMax] = useState(99999);
   const [filterOpen, setFilterOpen] = useState(false);
+
+  const maxPrice = useMemo(() =>
+    products.length ? Math.max(...products.map(p => p.price || 0), 5000) : 5000,
+  [products]);
 
   const query   = searchParams.get('q') || '';
   const badge   = searchParams.get('badge') || '';
@@ -42,13 +46,14 @@ export default function Products() {
   }, [searchParams]);
 
   const filtered = useMemo(() => {
+    if (products.length) console.log('Unique categories in DB:', [...new Set(products.map(p => p.category))]);
     let list = [...products];
 
     if (query)    list = list.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
     if (badge)    list = list.filter(p => p.badge === badge);
     if (isSale)   list = list.filter(p => p.mrp - p.price > 0);
     if (category !== 'all') list = list.filter(p => p.category === category);
-    list = list.filter(p => p.price <= priceMax);
+    if (priceMax < 99999) list = list.filter(p => (p.price || 0) <= priceMax);
 
     switch (sort) {
       case 'priceLow':  return list.sort((a, b) => a.price - b.price);
@@ -58,7 +63,11 @@ export default function Products() {
     }
   }, [category, sort, priceMax, query, badge, isSale]);
 
-  const pageTitle = query ? `Search: "${query}"` : badge === 'new' ? 'New Arrivals' : isSale ? 'Sale' : 'All Jewellery';
+  const pageTitle = query ? `Search: "${query}"`
+    : badge === 'new' ? 'New Arrivals'
+    : isSale ? 'Sale'
+    : category !== 'all' ? (CAT_OPTIONS.find(c => c.value === category)?.label || 'Collections')
+    : 'All Jewellery';
 
   return (
     <>
@@ -137,22 +146,22 @@ export default function Products() {
               {/* Price */}
               <div style={{ marginBottom: 28 }}>
                 <p style={{ fontSize: '.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--c-gray)', marginBottom: 12 }}>
-                  Max Price: ₹{priceMax.toLocaleString('en-IN')}
+                  Max Price: {priceMax >= maxPrice ? 'All' : '₹' + priceMax.toLocaleString('en-IN')}
                 </p>
                 <input
-                  type="range" min={200} max={5000} step={100}
-                  value={priceMax}
+                  type="range" min={0} max={maxPrice} step={100}
+                  value={Math.min(priceMax, maxPrice)}
                   onChange={e => setPriceMax(+e.target.value)}
                   style={{ width: '100%', accentColor: 'var(--c-purple)' }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.74rem', color: 'var(--c-gray)', marginTop: 6 }}>
-                  <span>₹200</span><span>₹5,000</span>
+                  <span>₹0</span><span>₹{maxPrice.toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
               {/* Reset */}
               <button
-                onClick={() => { setCategory('all'); setPriceMax(5000); setSort('popular'); }}
+                onClick={() => { setCategory('all'); setPriceMax(99999); setSort('all'); }}
                 style={{ fontSize: '.82rem', color: 'var(--c-purple)', fontWeight: 500 }}
               >
                 Clear All Filters
@@ -175,6 +184,11 @@ export default function Products() {
               }}>
                 <p style={{ fontSize: '.88rem', color: 'var(--c-gray)' }}>
                   Showing <strong style={{ color: 'var(--c-dark)' }}>{filtered.length}</strong> products
+                  {products.length > 0 && filtered.length === 0 && (
+                    <span style={{ color: '#F59E0B', marginLeft: 8, fontSize: '.8rem' }}>
+                      ({products.length} total loaded — category mismatch?)
+                    </span>
+                  )}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: '.82rem', color: 'var(--c-gray)' }}>Sort by:</span>
@@ -203,7 +217,7 @@ export default function Products() {
                   <div className="empty-icon">🔍</div>
                   <h3>No products found</h3>
                   <p>Try adjusting your filters or search terms</p>
-                  <button className="btn btn-dark" onClick={() => { setCategory('all'); setPriceMax(5000); }}>
+                  <button className="btn btn-dark" onClick={() => { setCategory('all'); setPriceMax(99999); }}>
                     Clear Filters
                   </button>
                 </div>

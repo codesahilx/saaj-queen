@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  collection, query, orderBy, onSnapshot, doc, updateDoc,
+  collection, onSnapshot, doc, updateDoc, query, orderBy,
   addDoc, deleteDoc, serverTimestamp, setDoc,
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -75,13 +75,12 @@ export default function Admin() {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, snap => {
-      setAdminProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    return onSnapshot(collection(db, 'products'), snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      all.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+      setAdminProducts(all);
       setProductsLoading(false);
-    }, () => {
-      setProductsLoading(false);
-    });
+    }, () => setProductsLoading(false));
   }, []);
 
   useEffect(() => {
