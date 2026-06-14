@@ -10,8 +10,10 @@ import {
   FiPlus, FiEdit2, FiTrash2, FiShoppingBag, FiAlertCircle, FiUploadCloud,
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
+
+const CLOUDINARY_CLOUD = 'dvemlgrqc';
+const CLOUDINARY_PRESET = 'saaj_queen_products';
 import { products as staticProducts } from '../data/products';
 import { useToast } from '../context/ToastContext';
 
@@ -165,24 +167,49 @@ export default function Admin() {
     setShowModal(true);
   };
 
-  const handleImageUpload = (file) => {
+  const compressImage = (file) => new Promise(resolve => {
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 1200;
+      let { width, height } = img;
+      if (width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
+      else if (height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(blobUrl);
+      canvas.toBlob(resolve, 'image/jpeg', 0.82);
+    };
+    img.src = blobUrl;
+  });
+
+  const handleImageUpload = async (file) => {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { addToast('Image must be under 5MB', 'error'); return; }
     setUploading(true);
-    setUploadProgress(0);
-    const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-    const task = uploadBytesResumable(storageRef, file);
-    task.on('state_changed',
-      snap => setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-      () => { addToast('Upload failed', 'error'); setUploading(false); },
-      async () => {
-        const url = await getDownloadURL(task.snapshot.ref);
-        setForm(f => ({ ...f, images: [...f.images, url] }));
-        setUploading(false);
-        setUploadProgress(0);
-        addToast('Image uploaded!', 'success');
-      }
-    );
+    setUploadProgress(10);
+    try {
+      const compressed = await compressImage(file);
+      setUploadProgress(40);
+      const fd = new FormData();
+      fd.append('file', compressed, 'product.jpg');
+      fd.append('upload_preset', CLOUDINARY_PRESET);
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
+        { method: 'POST', body: fd }
+      );
+      setUploadProgress(90);
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      setForm(f => ({ ...f, images: [...f.images, data.secure_url] }));
+      setUploadProgress(100);
+      setTimeout(() => { setUploading(false); setUploadProgress(0); }, 400);
+      addToast('Image uploaded!', 'success');
+    } catch {
+      addToast('Upload failed', 'error');
+      setUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   const handleSave = async () => {
