@@ -3,9 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiHeart, FiShoppingBag, FiTruck, FiRefreshCw, FiShield, FiShare2, FiMessageCircle, FiChevronDown } from 'react-icons/fi';
 import { FaHeart, FaWhatsapp } from 'react-icons/fa';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { products as staticProducts } from '../data/products';
 import ProductCard from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -26,24 +25,22 @@ export default function ProductDetail() {
     setFetching(true);
     setActiveImg(0);
     getDoc(doc(db, 'products', id))
-      .then(snap => {
+      .then(async snap => {
         if (snap.exists()) {
           const p = { id: snap.id, ...snap.data() };
           setProduct(p);
           getDocs(collection(db, 'products'))
-            .then(all => setRelated(all.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.category === p.category && x.id !== p.id).slice(0, 4)))
+            .then(all => setRelated(
+              all.docs.map(d => ({ id: d.id, ...d.data() }))
+                .filter(x => x.category === p.category && x.id !== p.id)
+                .slice(0, 4)
+            ))
             .catch(() => {});
         } else {
-          const p = staticProducts.find(p => p.id === +id) || null;
-          setProduct(p);
-          if (p) setRelated(staticProducts.filter(x => x.category === p.category && x.id !== p.id).slice(0, 4));
+          setProduct(null);
         }
       })
-      .catch(() => {
-        const p = staticProducts.find(p => p.id === +id) || null;
-        setProduct(p);
-        if (p) setRelated(staticProducts.filter(x => x.category === p.category && x.id !== p.id).slice(0, 4));
-      })
+      .catch(() => setProduct(null))
       .finally(() => setFetching(false));
   }, [id]);
 

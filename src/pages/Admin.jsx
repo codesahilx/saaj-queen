@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react';
 import {
   collection, query, orderBy, onSnapshot, doc, updateDoc,
-  addDoc, deleteDoc, serverTimestamp, writeBatch,
+  addDoc, deleteDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPackage, FiTruck, FiCheck, FiX, FiClock, FiSearch, FiRefreshCw,
   FiChevronDown, FiChevronUp, FiPhone, FiMail, FiMapPin,
-  FiPlus, FiEdit2, FiTrash2, FiShoppingBag, FiAlertCircle, FiUploadCloud,
+  FiPlus, FiEdit2, FiTrash2, FiShoppingBag, FiUploadCloud,
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { db } from '../firebase';
-
 const CLOUDINARY_CLOUD = 'dvemlgrqc';
 const CLOUDINARY_PRESET = 'saaj_queen_products';
-import { products as staticProducts } from '../data/products';
 import { useToast } from '../context/ToastContext';
 
 const STATUS_CONFIG = {
@@ -53,8 +51,6 @@ export default function Admin() {
   // ─── Products state ──────────────────────────────────────────────────
   const [adminProducts,  setAdminProducts]  = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
-  const [seeded,         setSeeded]         = useState(false);
-  const [seeding,        setSeeding]        = useState(false);
   const [showModal,      setShowModal]      = useState(false);
   const [editingProd,    setEditingProd]    = useState(null);
   const [form,           setForm]           = useState(EMPTY_FORM);
@@ -77,16 +73,9 @@ export default function Admin() {
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, snap => {
-      if (!snap.empty) {
-        setAdminProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        setSeeded(true);
-      } else {
-        setAdminProducts(staticProducts);
-        setSeeded(false);
-      }
+      setAdminProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setProductsLoading(false);
     }, () => {
-      setAdminProducts(staticProducts);
       setProductsLoading(false);
     });
   }, []);
@@ -130,24 +119,6 @@ export default function Admin() {
     outStock: adminProducts.filter(p => (p.stock || 0) === 0).length,
   };
 
-  const seedProducts = async () => {
-    if (!window.confirm(`Import ${staticProducts.length} products from file to Firestore?`)) return;
-    setSeeding(true);
-    try {
-      const batch = writeBatch(db);
-      staticProducts.forEach(p => {
-        const { id: pid, ...rest } = p;
-        batch.set(doc(db, 'products', String(pid)), { ...rest, createdAt: serverTimestamp() });
-      });
-      await batch.commit();
-      addToast('Products imported to Firestore!', 'success');
-    } catch (e) {
-      console.error(e);
-      addToast('Import failed. Check console.', 'error');
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const openAdd = () => {
     setEditingProd(null);
@@ -230,8 +201,6 @@ export default function Admin() {
         care:     form.care.trim(),
         stock:    Number(form.stock) || 0,
         images:   form.images,
-        rating:   editingProd?.rating || 4.5,
-        reviews:  editingProd?.reviews || 0,
       };
       if (editingProd) {
         await updateDoc(doc(db, 'products', editingProd.id), data);
@@ -506,26 +475,6 @@ export default function Admin() {
               ))}
             </div>
 
-            {/* Firestore not seeded banner */}
-            {!seeded && !productsLoading && (
-              <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 12, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <FiAlertCircle size={18} style={{ color: '#F59E0B', flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontWeight: 600, fontSize: '.9rem', color: '#92400E' }}>Products are from local file</p>
-                    <p style={{ fontSize: '.8rem', color: '#B45309' }}>Import to Firestore to enable Add/Edit/Delete from dashboard</p>
-                  </div>
-                </div>
-                <button
-                  onClick={seedProducts}
-                  disabled={seeding}
-                  style={{ padding: '9px 18px', background: '#F59E0B', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: '.85rem', flexShrink: 0, opacity: seeding ? .7 : 1 }}
-                >
-                  {seeding ? 'Importing…' : `Import ${staticProducts.length} Products to Firestore`}
-                </button>
-              </div>
-            )}
-
             {/* Product Toolbar */}
             <div style={{ background: '#fff', borderRadius: 14, padding: '14px 18px', border: '1px solid var(--c-border)', marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
@@ -540,9 +489,7 @@ export default function Admin() {
               </select>
               <button
                 onClick={openAdd}
-                disabled={!seeded}
-                title={!seeded ? 'Import products first' : 'Add new product'}
-                style={{ padding: '9px 18px', background: seeded ? 'var(--c-purple)' : 'var(--c-gray2)', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: '.85rem', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, opacity: seeded ? 1 : .6 }}
+                style={{ padding: '9px 18px', background: 'var(--c-purple)', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: '.85rem', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}
               >
                 <FiPlus size={16} /> Add Product
               </button>
@@ -600,15 +547,13 @@ export default function Admin() {
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                       <button
                         onClick={() => openEdit(p)}
-                        disabled={!seeded}
-                        style={{ padding: '7px 14px', borderRadius: 7, border: '1.5px solid var(--c-purple)', color: 'var(--c-purple)', fontSize: '.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', opacity: seeded ? 1 : .4 }}
+                        style={{ padding: '7px 14px', borderRadius: 7, border: '1.5px solid var(--c-purple)', color: 'var(--c-purple)', fontSize: '.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, background: 'transparent' }}
                       >
                         <FiEdit2 size={13} /> Edit
                       </button>
                       <button
-                        onClick={() => seeded && setDeleteId(p.id)}
-                        disabled={!seeded}
-                        style={{ padding: '7px 14px', borderRadius: 7, border: '1.5px solid #EF4444', color: '#EF4444', fontSize: '.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', opacity: seeded ? 1 : .4 }}
+                        onClick={() => setDeleteId(p.id)}
+                        style={{ padding: '7px 14px', borderRadius: 7, border: '1.5px solid #EF4444', color: '#EF4444', fontSize: '.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, background: 'transparent' }}
                       >
                         <FiTrash2 size={13} /> Delete
                       </button>
