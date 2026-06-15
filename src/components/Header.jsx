@@ -89,19 +89,6 @@ export default function Header() {
 
   return (
     <>
-      {/* Announcement Bar */}
-      <div style={{
-        background: 'linear-gradient(90deg,#3B0764,#6B21A8,#3B0764)',
-        color: '#E8C547',
-        textAlign: 'center',
-        padding: '9px 20px',
-        fontSize: '.78rem',
-        fontWeight: 500,
-        letterSpacing: '.03em',
-      }}>
-        ✦ Free Shipping on orders above ₹999 &nbsp;|&nbsp; Easy 7-Day Returns &nbsp;|&nbsp; COD Available ✦
-      </div>
-
       {/* Main Header */}
       <header style={{
         position: 'sticky',

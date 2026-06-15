@@ -132,7 +132,7 @@ export default function Footer() {
               {[
                 { icon: FiPhone, text: '+91 90825 41454' },
                 { icon: FiMail,  text: 'saajqueen454@gmail.com' },
-                { icon: FiClock, text: 'Mon–Sat, 10am – 7pm IST' },
+                { icon: FiClock, text: 'Mon–Sun, 10am – 7pm IST' },
               ].map(({ icon: Icon, text }) => (
                 <li key={text} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Icon size={15} style={{ color: 'var(--c-gold)', flexShrink: 0 }} />
